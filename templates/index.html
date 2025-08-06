@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suivi - LinkGuardian</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const checkAllSitesButton = document.getElementById('check-all-sites-btn');
+            const syncIcon = checkAllSitesButton.querySelector('.fa-sync-alt');
+
+            checkAllSitesButton.addEventListener('click', function() {
+                syncIcon.classList.add('rotate');
+
+                setTimeout(function() {
+                    syncIcon.classList.remove('rotate');
+                    refreshData();
+                }, 2000); 
+            });
+        
+        function refreshData() {
+            console.log("ok......")
+            fetch('/get_latest_sites_data')
+                .then(response => response.json())
+                .then(data => {
+                    
+                   
+                    updateTable(data.sites);
+                })
+                .catch(error => console.error('Erreur lors de la récupération des données :', error));
+        }
+    
+       
+        function updateTable(sites) {
+            const tableRows = document.querySelectorAll('#table-body tr');
+            console.log(sites)
+
+            tableRows.forEach((row, index) => {
+                const site = sites[index]; 
+
+                    console.log("Google indéxation ", site.google_index_status)
+                const date = new Date(site.last_checked);
+                const formattedDate = `${('0' + date.getDate()).slice(-2)}-${('0' + (date.getMonth() + 1)).slice(-2)}-${date.getFullYear()} ${('0' + date.getHours()).slice(-2)}:${('0' + date.getMinutes()).slice(-2)}:${('0' + date.getSeconds()).slice(-2)}`;
+
+                
+                //row.cells[1].textContent = site.url;
+                row.cells[1].textContent = site.url;
+                row.cells[2].textContent = site.status_code;
+
+                const cellLinkStatus = row.cells[5];
+                const spanLinkStatus = document.createElement('span');
+                spanLinkStatus.textContent = site.link_status;
+                spanLinkStatus.className = site.link_status === 'Lien présent' ? 'link-present' : 'link-absent';
+                spanLinkStatus.style.backgroundColor = site.link_status === 'Lien présent' ? 'green' : '#8B0000';
+                cellLinkStatus.innerHTML = '';
+                cellLinkStatus.appendChild(spanLinkStatus);
+                
+                const cellAnchorStatus = row.cells[6]; 
+                const spanAnchorStatus = document.createElement('span');
+                spanAnchorStatus.textContent = site.anchor_status;
+                spanAnchorStatus.className = site.anchor_status === 'Ancre présente' ? 'anchor-present' : 'anchor-absent';
+                spanAnchorStatus.style.backgroundColor = site.anchor_status === 'Ancre présente' ? 'green' : '#8B0000';
+                cellAnchorStatus.innerHTML = '';
+                cellAnchorStatus.appendChild(spanAnchorStatus);
+
+                const cellFollowStatus = row.cells[7]; 
+                const spanFollowStatus = document.createElement('span');                        
+                spanFollowStatus.textContent = site.link_follow_status || 'None';                     
+                const followClass = site.link_follow_status === 'follow' ? 'follow-present' : (site.link_follow_status === 'nofollow' ? 'nofollow-present' : 'follow-absent');
+                spanFollowStatus.classList.add(followClass);
+                let bgColor = '';
+                if (site.link_follow_status === 'follow') {
+                    bgColor = 'green';
+                } else if (site.link_follow_status === 'nofollow') {
+                    bgColor = 'orange';
+                } else if (site.link_follow_status === null) {
+                    bgColor = '#8B0000'; 
+                } else {
+                    bgColor = '#8B0000';
+                }
+                spanFollowStatus.style.backgroundColor = bgColor;
+                spanFollowStatus.style.padding = '4px';
+                cellFollowStatus.innerHTML = '';
+                cellFollowStatus.appendChild(spanFollowStatus);
+
+                row.cells[8]= site.google_index_status;
+                const cellIndexStatus = row.cells[6]; 
+                const spanIndexStatus = document.createElement('span');
+                spanIndexStatus.textContent = site.google_index_status; 
+                spanIndexStatus.className = site.google_index_status === 'Indexé !' ? 'anchor-present' : 'anchor-absent';
+                spanIndexStatus.style.backgroundColor = site.google_index_status === 'Indexé !' ? 'green' : '#8B0000';
+                cellIndexStatus.innerHTML = '';
+                cellIndexStatus.appendChild(spanIndexStatus);
+
+                row.cells[9]= site.page_value;
+                row.cells[10]= site.page_trust;
+                row.cells[11]= site.bas;
+                row.cells[12]= site.backlinks_external;
+                row.cells[13]= site.num_outlinks_ext;
+                row.cells[14].textContent = formattedDate;
+            });
+        }
+        
+    
+ 
+    
+        $(document).ready(function() {
+            $('#check-all-sites-btn').click(function(e) {
+                e.preventDefault(); 
+                $.ajax({
+                    url: '/check_all_sites', 
+                    type: 'POST',
+                    success: function(response) {
+                        console.log('Les sites ont été vérifiés avec succès');
+                        refreshData();
+                    },
+                    error: function(error) {
+                        console.log('Erreur lors de la vérification des sites', error);
+                    }
+                });
+            });
+        });
+
+    </script>
+
+  
+    <style>
+        /* Votre code CSS ici -pour colorier le lien selectionné- */
+        .user-profile .dropdown-content a {
+            color: black; /* Couleur par défaut des liens */
+            text-decoration: none; /* Supprime le soulignement */
+            padding: 8px 12px; /* Espacement autour du texte */
+            display: block; /* Occupe tout l'espace disponible */
+        }
+
+        .user-profile .dropdown-content a:hover {
+            background-color: lightgray; /* Couleur de fond au survol */
+        }
+
+        .user-profile .dropdown-content a.active {
+            color: inherit; /* Conserve la couleur par défaut (noir) */
+            background-color: transparent; /* Supprime la couleur de fond */
+            font-weight: normal; /* Met le texte en gras */
+        }
+    </style>
+    
+    <style>
+        /* Styles pour les statuts Follow/Nofollow */
+        .indexation-present, .follow-absent {
+            padding: 5px 10px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+       
+        .rotate {
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .indexation-present {
+            background-color: #5cb85c; 
+        }
+
+        .non-indexe {
+            background-color: #FF6347; 
+            color: white; 
+            padding: 5px 10px;
+            border-radius: 4px; 
+            display: inline-block;
+        }
+    </style>
+    <style>
+        /* Styles pour les statuts Follow/Nofollow */
+        .follow-present, .follow-absent {
+            padding: 5px 10px;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .follow-present {
+            background-color: #5cb85c; 
+        }
+
+        .follow-absent {
+            background-color: #d9534f; 
+        }
+    </style>
+    <style>
+        /* Styles existants */
+        /* ... */
+
+        /* Media Queries pour le responsive design */
+        @media (max-width: 768px) {
+            .wide-column, .medium-column, .narrow-column {
+                min-width: 100%;
+            }
+            .form-inline, .flex-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+    <style>
+            /* Classe pour les colonnes larges */
+        .wide-column {
+            min-width: 180px;
+        }
+
+        /* Classe pour les colonnes moyennes */ 
+        .medium-column {
+            min-width: 150px; 
+        }
+
+        /* Classe pour les colonnes étroites */
+        .narrow-column {
+            min-width: 150px; 
+        }
+    </style>
+    <style>
+            .custom-badge {
+                display: inline-block;
+                padding: .7em .8em; 
+                font-size: 100%; 
+                font-weight: 700;
+                line-height: 1;
+                text-align: center;
+                white-space: nowrap;
+                vertical-align: baseline;
+                border-radius: .25rem;
+                color: white;
+            }
+    </style>
+    <style>
+        /* Centrage vertical pour toutes les cellules du tableau */
+        .table td, .table th {
+            vertical-align: middle;
+        }
+
+        /* Alignement à gauche pour les URLs */
+        .url-cell {
+            text-align: left;
+        }
+
+        /* Alignement au centre pour les autres cellules */
+        .center-cell {
+            text-align: center;
+        }
+    </style>
+    <style>
+        .badge {
+        color: white;
+        padding: 5px 10px;
+        font-size: 0.9em;
+        border-radius: 5px;
+        display: inline-block;
+        }
+    </style>
+    <style>
+    .table-button {
+        width: 150px;
+    }
+    </style>
+    <style>
+        
+
+        .table thead th a {
+            color: white; 
+            text-decoration: none;
+            transition: color 0.3s; 
+        }
+
+        .table thead th a:hover {
+            color: #ccc; 
+        }
+
+        /* Icônes de tri (exemple avec FontAwesome) */
+        .table thead th .fa-sort { 
+            color: #ddd;
+        }
+
+        .table thead th .fa-sort-up, /* Icône tri ascendant */
+        .table thead th .fa-sort-down { 
+            color: white;
+        }
+    </style>
+    <style>
+        /* Style général du tableau */
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 25px 0;
+            font-size: 0.9em;
+            font-family: sans-serif;
+            min-width: 400px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Style des en-têtes du tableau */
+        .table thead tr {
+            background-color: #526E83;
+            color: white;
+            text-align: left;
+        }
+
+        /* Style des cellules du tableau */
+        .table th,
+        .table td {
+            padding: 12px 15px;
+        }
+
+        /* Style des lignes alternées */
+        .table tbody tr {
+            border-bottom: 1px solid #dddddd;
+        }
+
+        .table tbody tr:nth-of-type(even) {
+            background-color: #f3f3f3;
+        }
+
+        .table tbody tr:last-of-type {
+            border-bottom: 2px solid #526E83;
+        }
+
+        /* Style au survol d'une ligne */
+        .table tbody tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        /* Style pour les boutons ou liens dans le tableau */
+        .table-button {
+            padding: 5px 10px;
+            color: white;
+            background-color: #009879;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .table-button:hover {
+            background-color: #007b5e;
+        }
+        
+
+        /* Style pour les tags et les états */
+        .tag, .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-align: center;
+            min-width: 80px; 
+        }
+
+        /* Style spécifique pour les états */
+        .link-present, .anchor-present {
+            background-color: #5cb85c; 
+            color: white;
+            padding: 5px 10px;
+            color: white;
+            background-color: #d9534f;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .link-absent, .anchor-absent {
+            background-color: #f0ad4e; 
+            color: white;
+            padding: 5px 10px;
+            color: white;
+            background-color: #d9534f; 
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        /* Vous pouvez ajouter des styles spécifiques pour chaque tag si nécessaire */
+        .tag-promovacances {
+            background-color: #0064DC;
+            color: white;
+        }
+
+        /* Style général du tableau */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        /* Style de l'en-tête du tableau */
+        th {
+            background-color: #4E5D6C; 
+            color: white; 
+            text-align: left; 
+            padding: 12px 15px; 
+            font-size: 16px; 
+            border-bottom: 2px solid #dee2e6; 
+        }
+
+        /* Style des cellules du tableau */
+        td {
+            padding: 10px 15px; 
+            border-bottom: 1px solid #dee2e6; 
+        }
+
+        /* Style des liens dans l'en-tête pour le tri */
+        th a {
+            color: white; 
+            text-decoration: none;
+        }
+
+        th a:hover {
+            text-decoration: underline;
+        }
+        
+    </style>
+    <style>
+        .form-inline {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background-color: #f7f7f7;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-control {
+            width: auto; 
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            padding: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #526E83;
+            color: white;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #0056B3;
+        }
+        .btn-primary {
+        padding: 10px 20px;
+        background-color: #526e83;
+        border: none;
+        border-radius: 5px;
+        color: white;
+        font-size: 16px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        transition: background-color 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        .btn-primary:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.5);
+        }
+        /* Style pour le bouton Supprimer */
+        .delete-button {
+            padding: 5px 10px;
+            color: white;
+            background-color: #8B0000; 
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .delete-button:hover {
+            background-color: #8B0000;
+        }
+        .flex-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .form-control {
+            flex-grow: 1; 
+            margin-right: 10px; 
+        }
+        .header {
+            display: flex;
+            align-items: center;
+        }
+
+        .logo {
+            width: 100px; 
+            margin-right: 10px;
+        }
+        @font-face {
+            font-family: 'Blacksword';
+            src: url('static/Blacksword.otf') format('opentype');
+        }
+
+        .signature {
+            font-family: 'Blacksword', cursive; 
+            font-size: 12px; 
+            text-align: right;
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+        }
+
+        footer {
+            position: relative;
+            height: 60px; 
+        }
+        .button-group {
+            display: flex;
+            align-items: center;
+            gap: 10px; 
+        }
+
+        .button-group .btn {
+            padding: 10px 15px;
+            text-decoration: none;
+            color: white;
+            border-radius: 5px;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d; 
+        }
+
+        .btn-secondary:hover {
+            background-color: #5a6268; 
+        }
+        .btn i {
+        font-size: 12px; 
+        margin-right: 5px; 
+        }
+        th a {
+            display: flex;
+            align-items: center;
+        }
+
+        th a i {
+            margin-left: 5px; 
+        }
+        .fa-external-link-alt {
+        color: #6C757D; 
+        margin-left: 5px;
+        font-size: 70%;
+        }
+        .user-profile {
+        display: flex;
+        align-items: center;
+        }
+
+        .user-image {
+        width: 40px; 
+        height: 40px; 
+        border-radius: 50%; 
+        object-fit: cover; 
+        margin-right: 10px; 
+        }
+
+        .username {
+        font-size: 16px; 
+        
+        }
+        .user-profile {
+        position: relative;
+        display: inline-block;
+        cursor: pointer;
+        }
+
+        .dropdown-content {
+        display: none;
+        position: absolute;
+        right: 0;
+        background-color: #f9f9f9;
+        min-width: 160px;
+        box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+        z-index: 1;
+        }
+
+        .dropdown-content a {
+        color: black;
+        padding: 12px 16px;
+        text-decoration: none;
+        display: block;
+        }
+
+        .user-profile:hover .dropdown-content {
+        display: block;
+        }
+
+        .confirm-dialog1 {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5); 
+        z-index: 9999;
+        }
+
+        .confirm-content1 {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            height: 200px; 
+        }
+
+
+
+        .container-fluid {
+        max-height: 950px; 
+        overflow-x: auto; 
+
+        }
+
+        .outer-container {
+        max-height: 500px; 
+        overflow: hidden; 
+        position: relative; 
+        }
+
+        .container-fluid {
+            overflow-x: auto; 
+        }
+
+        .container-fluid::-webkit-scrollbar {
+            height: 8px; 
+            width: 8px; 
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+        }
+
+        .table-responsive{
+            height: 610px;
+        }
+
+        .navig{
+        margin-left: 1450px;
+        margin-top: -30px;
+        }
+    </style>
+    
+    <style>
+        /* Styles du popup */
+        .popup {
+            position: fixed;
+            top: 20%; /* Position plus haute */
+            left: 50%;
+            transform: translate(-50%, 0);
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+            border: 1px solid #ccc;
+            z-index: 1000;
+            max-width: 400px;
+            width: 90%;
+        }
+
+        /* Style pour le titre du popup */
+        .popup h3 {
+            margin: 0 0 10px 0;
+            font-size: 18px;
+            color: #333;
+            text-align: center;
+        }
+
+        /* Liste des sources */
+        .source-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        /* Éléments de la liste */
+        .source-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background: #f9f9f9;
+            border-radius: 5px;
+            transition: background 0.3s;
+        }
+
+        /* Couleur différente au survol */
+        .source-item:hover {
+            background: #e6f7ff;
+        }
+
+        /* Bouton "Supprimer" */
+        .delete-btn {
+            background: #ff4d4f;
+            border: none;
+            border-radius: 5px;
+            padding: 5px 10px;
+            color: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.3s;
+        }
+
+        /* Effet au survol et clic */
+        .delete-btn:hover {
+            background: #d9363e;
+            transform: scale(1.05);
+        }
+
+        /* Bouton "Fermer" */
+        .close-popup-btn {
+            display: block;
+            margin: 15px auto 0 auto;
+            padding: 8px 20px;
+            background: #1890ff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s, transform 0.2s;
+        }
+
+        /* Effet au survol et clic pour le bouton "Fermer" */
+        .close-popup-btn:hover {
+            background: #40a9ff;
+            transform: scale(1.05);
+        }
+
+    </style>
+
+</head>
+
+<body>
+   
+    <div class="container-fluid">
+        <!-- Barre de navigation avec les liens -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container-fluid-nav">
+                <!-- Logo et nom de l'outil alignés verticalement -->
+                <a class="navbar-brand" href="/">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" style="height: 80px;">
+                    LinkGuardian
+                </a>
+                <!-- Bouton pour le menu hamburger -->
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedMenu" aria-controls="navbarSupportedMenu" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <!-- Menu déroulant pour les liens de navigation -->
+               <div class="navig">
+                <div class="collapse navbar-collapse" id="navbarSupportedMenu">
+                    <ul class="navbar-nav ms-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="/">Accueil</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" aria-current="page" href="/backlink-analysis">Analyse des Backlinks</a>
+                        </li>
+                        <!-- Ajoutez d'autres éléments de navigation si nécessaire -->
+                    </ul>
+                    <div class="user-profile">
+                        <img src="/static/utilisateur.png" alt="User" class="user-image">
+                        <span class="username">{{ username }}</span>
+                        <div class="dropdown-content">
+                            <a href="{{ url_for('configuration') }}" class="nav-link">Configuration</a>
+                            <!- -ici modif -->
+                            {% if current_user.role == 'admin' %}  <!-- Vérifiez si l'utilisateur est un admin -->
+                            <a href="{{ url_for('admin') }}" class="nav-link">Administration</a>  <!-- Lien vers la page d'administration -->
+                            {% endif %}
+                            <!- -ici modif -->
+                            <a href="{{ url_for('logout') }}" class="nav-link">Déconnecter</a>
+                        </div>
+                    </div>
+                </div>
+               </div> 
+            </div>
+        </nav>
+        <div class="row">
+            <div class="col-12">
+            <form action="/add_site" method="post" class="my-3 form-inline">
+            <div class="form-group">
+                <input type="text" name="url" placeholder="Enter URL" required>
+                <!-- Nouveau champ de sélection pour le tag -->
+            </div>
+            <div class="form-control">
+                <select id="tag-select" name="tag" style="width: 50%;">
+                    {% for tag in tags %}
+                        <option value="{{ tag.valeur }}">{{ tag.valeur }}</option>
+                    {% endfor %}
+                    <option value="ajouter">+ Ajouter</option>
+                    <option value="supprimer">- Supprimer</option>
+                </select>
+
+                <!-- Formulaire d'ajout de tag, affiché seulement quand l'option "Ajouter" est sélectionnée -->
+                <div id="add-tag-form" style="display: none;">
+                    <input type="text" id="new-tag" placeholder="Nouveau tag">
+                    <button onclick="addTag()">Ajouter</button>
+                </div>
+
+                <!-- Popup pour la suppression des tags -->
+                <div id="delete-tag-popup" class="popup" style="display: none;">
+                    <h3>Supprimer un tag</h3>
+                    <ul id="tag-list" class="source-list">
+                        {% for tag in tags %}
+                            <li class="source-item">
+                                {{ tag.valeur }}
+                                <button class="delete-btn" data-tag="{{ tag.valeur }}">Supprimer</button>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button onclick="closeTagPopup()" class="close-popup-btn">Fermer</button>
+                </div>
+            </div>
+
+            <!-- ajouter et supprimer dans la liste  -->
+            <!-- ajouter et supprimer dans la liste  -->
+
+            <div class="form-control">
+                <label for="source_plateforme">Source :</label>
+                <select id="source_plateforme" name="source_plateforme" style="width: 50%;">
+                    {% for source in sources %}
+                        <option value="{{ source.nom }}">{{ source.nom }}</option>
+                    {% endfor %}
+                    <option value="ajouter">+ Ajouter</option>
+                    <option value="supprimer">- Supprimer</option>
+                </select>
+                
+                <!-- Formulaire d'ajout de source, affiché seulement quand l'option "Ajouter" est sélectionnée -->
+                <div id="add-source-form" style="display: none;">
+                    <input type="text" id="new-source" placeholder="Nouvelle source">
+                    <button onclick="addSource()">Ajouter</button>
+                </div>
+
+                <!-- Popup pour la suppression -->
+                <div id="delete-source-popup" class="popup" style="display: none;">
+                    <h3>Supprimer une source</h3>
+                    <ul id="source-list" class="source-list">
+                        {% for source in sources %}
+                            <li class="source-item">
+                                {{ source.nom }}
+                                <button class="delete-btn" data-source="{{ source.nom }}">Supprimer</button>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <button onclick="closePopup()" class="close-popup-btn">Fermer</button>
+                </div>
+            </div>
+
+
+            <!-- Nouveaux champs pour l'URL du lien et l'ancre textuelle -->
+            <div class="form-group">
+            <input type="text" name="link_to_check" class="form-control"  placeholder="Enter Link URL">
+            </div>
+            <div class="form-group">
+            <input type="text" name="anchor_text" class="form-control"  placeholder="Enter Anchor Text">
+            </div>
+            <button type="submit" class="btn btn-primary">Ajouter Site</button>
+        </form>
+        <form method="post" action="{{ url_for('import_data') }}" enctype="multipart/form-data" class="form-style">
+            <div class="form-group flex-container">
+                <label for="fileUpload" class="form-label">Choisir un fichier Excel :</label>
+                <div style="width: 10px;"></div>
+                <input type="file" name="file" id="fileUpload" class="form-control">
+                <button type="submit" class="btn btn-primary">Importer</button>
+            </div>
+        </form>
+        <div style="height: 15px;"></div>
+        <div class="button-group">
+            <form action="/check_all_sites" method="post">
+                <button id="check-all-sites-btn" class="btn btn-primary">
+                    <i class="fa fa-sync-alt"></i> Vérifier tous les sites
+                </button>
+            </form>
+            <form id="delete-all-form" action="{{ url_for('delete_all_sites') }}" method="post">
+                <button type="button" class="btn btn-danger delete-button" id="delete-all-button">
+                    <i class="fa fa-sync-alt"></i> Supprimer tous les sites
+                </button>
+            </form>
+
+            
+                        
+    <!-- Style CSS pour centrer la boîte de dialogue -->
+    <style>
+        .confirm-dialog {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); 
+            z-index: 9999;
+        }
+
+        .confirm-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            width: 400px; 
+            height: 200px; 
+        }
+
+    
+    
+    </style>
+
+
+    <!-- Boîte de dialogue de confirmation -->
+    <div class="confirm-dialog" id="confirm-dialog">
+        <div class="confirm-content">
+            <p>Voulez-vous supprimer tous les urls ?</p>
+            <div class="button-container">
+                <button id="confirm-yes">Oui</button>
+                <button id="confirm-no">Non</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Style CSS pour afficher les boutons en ligne -->
+    <style>
+        .button-container button {
+            display: inline-block;
+        }
+    </style>
+
+    <script>
+        // Récupérer le bouton de suppression
+        var deleteButton = document.getElementById('delete-all-button');
+        
+        // Récupérer la boîte de dialogue
+        var confirmDialog = document.getElementById('confirm-dialog');
+
+        // Ajouter un écouteur d'événements pour le clic sur le bouton
+        deleteButton.addEventListener('click', function() {
+        
+            confirmDialog.style.display = 'block';
+        });
+
+        // Récupérer les boutons de confirmation et d'annulation
+        var confirmYesButton = document.getElementById('confirm-yes');
+        var confirmNoButton = document.getElementById('confirm-no');
+
+        // Ajouter des écouteurs d'événements pour les boutons de confirmation et d'annulation
+        confirmYesButton.addEventListener('click', function() {
+        
+            document.getElementById('delete-all-form').submit();
+        });
+
+        confirmNoButton.addEventListener('click', function() {
+        
+            confirmDialog.style.display = 'none';
+        });
+    </script>
+        <a href="{{ url_for('static', filename='downloads/template.xlsx') }}" download="template.xlsx" class="btn btn-secondary"> <i class="fa fa-file-excel"></i> Télécharger le modèle Excel</a>
+        </div>
+        
+        <div style="height: 15px;"></div> 
+        <div class="table-container"></div>  
+        <div class="table-responsive"> <!-- Conteneur pour le tableau responsive -->        
+            <table class="table">
+                <thead>
+                    <tr>  <th>#</th> <!-- Colonne pour les numéros de ligne -->
+                        <th class="url-cell wide-column"><a href="?sort=url&order={{ 'asc' if request.args.get('sort') == 'url' and request.args.get('order') == 'desc' else 'desc' }}">
+                URL
+                <i class="fas fa-sort-up" style="{{ 'visibility: visible;' if request.args.get('sort') == 'url' and request.args.get('order') == 'asc' else 'visibility: hidden;' }}"></i>
+                <i class="fas fa-sort-down" style="{{ 'visibility: visible;' if request.args.get('sort') == 'url' and request.args.get('order') == 'desc' else 'visibility: hidden;' }}"></i>
+            </a></th>
+                        <th class="center-cell wide-column"><a href="?sort=status_code&order={{ 'asc' if request.args.get('sort') == 'status_code' and request.args.get('order') == 'desc' else 'desc' }}">Status<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'status_code' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=tag&order={{ 'asc' if request.args.get('sort') == 'tag' and request.args.get('order') == 'desc' else 'desc' }}">Site <i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'tag' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=tag&order={{ 'asc' if request.args.get('sort') == 'tag' and request.args.get('order') == 'desc' else 'desc' }}">Source <i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'tag' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=link_to_check&order={{ 'asc' if request.args.get('sort') == 'link_to_check' and request.args.get('order') == 'desc' else 'desc' }}">Présence de l'Url source<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'link_to_check' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=anchor_text&order={{ 'asc' if request.args.get('sort') == 'anchor_text' and request.args.get('order') == 'desc' else 'desc' }}">Présence de l'Ancre<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'anchor_text' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=link_follow_status&order={{ 'asc' if request.args.get('sort') == 'link_follow_status' and request.args.get('order') == 'desc' else 'desc' }}">Lien Follow/Nofollow<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'link_follow_status' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=google_index_status&order={{ 'asc' if request.args.get('sort') == 'google_index_status' and request.args.get('order') == 'desc' else 'desc' }}">Indexation Google<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'google_index_status' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=page_value&order={{ 'asc' if request.args.get('sort') == 'page_value' and request.args.get('order') == 'desc' else 'desc' }}">Page Value<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'page_value' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=page_trust&order={{ 'asc' if request.args.get('sort') == 'page_trust' and request.args.get('order') == 'desc' else 'desc' }}">Page Trust<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'page_value' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=bas&order={{ 'asc' if request.args.get('sort') == 'bas' and request.args.get('order') == 'desc' else 'desc' }}">BAS<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'bas' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=backlinks_external&order={{ 'asc' if request.args.get('sort') == 'backlinks_external' and request.args.get('order') == 'desc' else 'desc' }}">Backlinks (Urls)<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'backlinks_external' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=num_outlinks_ext&order={{ 'asc' if request.args.get('sort') == 'num_outlinks_ext' and request.args.get('order') == 'desc' else 'desc' }}">Outlinks<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'num_outlinks_ext' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column"><a href="?sort=last_checked&order={{ 'asc' if request.args.get('sort') == 'last_checked' and request.args.get('order') == 'desc' else 'desc' }}">Dernière vérification<i class="fas fa-{{ 'sort-up' if request.args.get('sort') == 'last_checked' and request.args.get('order') == 'asc' else 'sort-down' }}"></i></a></th>
+                        <th class="center-cell wide-column">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body">
+                    {% for site in sites %} 
+                    <tr>
+                        <td>{{ loop.index }}</td> <!-- Nouvelle cellule pour afficher le numéro -->
+                        <td class="url-cell">{{ site.url }}<a href="{{ site.url }}" target="_blank"><i class="fas fa-external-link-alt"></i></a></td>
+                        <td class="center-cell">{{ site.status_code }}</td>
+                        
+                        <td class="center-cell">
+                            <!-- Affichage du tag avec style conditionnel -->
+                            <span  class="tag" style="color: white; background-color: {{ site.tag | tag_color }}">{{ site.tag }}</span>
+                            
+                        </td>
+                        
+                        <td>{{ site.source_plateforme }}</td>
+                        
+                        <td class="center-cell wide-column"><span class="{{ 'link-present' if site.link_status == 'Lien présent' else 'link-absent' }}" style="background-color: {{ 'green' if site.link_status == 'Lien présent' else '#8B0000' }}">{{ site.link_status }}</span></td>
+                        <td class="center-cell wide-column"><span class="{{ 'anchor-present' if site.anchor_status == 'Ancre présente' else 'anchor-absent' }}" style="background-color: {{ 'green' if site.anchor_status == 'Ancre présente' else '#8B0000' }}">{{ site.anchor_status }}</span></td>
+                        <td class="center-cell wide-column"><span class="{{ 'follow-present' if site.link_follow_status == 'follow' else 'follow-absent' }}" style="background-color: {{ 'green' if site.link_follow_status == 'follow' else '#8B0000' }}">{{ site.link_follow_status }}</td>
+                        <td class="center-cell wide-column"><span class="{{ 'indexation-present' if site.google_index_status == 'Indexé !' else 'non-indexe' }}">{{ site.google_index_status }}</span></td>
+                        <td class="center-cell wide-column">{{ site.page_value }}</td>
+                        <td class="center-cell wide-column">{{ site.page_trust }}</td>
+                        <td class="center-cell wide-column">{{ site.bas }}</td>
+                        <td class="center-cell wide-column">{{ site.backlinks_external }}</td>
+                        <td class="center-cell wide-column">{{ site.num_outlinks_ext }}</td>
+                        <td class="center-cell">{{ site.last_checked.strftime('%d-%m-%Y %H:%M:%S') if site.last_checked else 'Jamais vérifié' }}</td>
+                        <td class="center-cell">
+                            <div class="d-flex justify-content-start">
+
+                                <a href="/check_status/{{ site.id }}" class="btn btn-info table-button"><i class="fa fa-sync-alt"></i> Vérifier Statut</a>
+                                <!-- Div séparateur pour l'espace -->
+                                <div style="width: 10px;"></div>
+                                <!-- Ajoutez des boutons ou des liens pour éditer/supprimer ici -->
+                                <div class="confirm-dialog" id="confirm-dialog-{{ site.id }}">
+                                    <div class="confirm-content">
+                                        <p>Voulez-vous supprimer cette URL ?</p>
+                                        <div class="button-container">
+                                            <button id="confirm-yes-{{ site.id }}">Oui</button>
+                                            <button id="confirm-no-{{ site.id }}">Non</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <form id="delete-form-{{ site.id }}" action="{{ url_for('delete_site', site_id=site.id) }}" method="post">
+                                    <button type="button" class="btn btn-danger delete-button" id="delete-button-{{ site.id }}">Supprimer</button>
+                                </form>
+                                
+                                <script>
+                                    document.addEventListener('DOMContentLoaded', function () {
+                                        {% for site in sites %}
+                                            var deleteButton{{ site.id }} = document.getElementById('delete-button-{{ site.id }}');
+                                            var confirmDialog{{ site.id }} = document.getElementById('confirm-dialog-{{ site.id }}');
+                                            var confirmYes{{ site.id }} = document.getElementById('confirm-yes-{{ site.id }}');
+                                            var confirmNo{{ site.id }} = document.getElementById('confirm-no-{{ site.id }}');
+                                            var deleteForm{{ site.id }} = document.getElementById('delete-form-{{ site.id }}');
+                                    
+                                            
+                                            deleteButton{{ site.id }}.addEventListener('click', function () {
+                                                confirmDialog{{ site.id }}.style.display = 'block';
+                                            });
+                                    
+                                        
+                                            confirmYes{{ site.id }}.addEventListener('click', function () {
+                                                deleteForm{{ site.id }}.submit();
+                                            });
+                                    
+                                        
+                                            confirmNo{{ site.id }}.addEventListener('click', function () {
+                                                confirmDialog{{ site.id }}.style.display = 'none';
+                                            });
+                                        {% endfor %}
+                                    });
+                                </script>
+                            
+                            </div>
+                        </td>
+                        
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                
+            </table>
+        </div>
+        </div>
+        <div style="height: 15px;"></div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var deleteButton = document.getElementById('deleteButton');
+            var deleteForm = document.getElementById('deleteForm');
+    
+            deleteButton.addEventListener('click', function () {
+                var isConfirmed = confirm("Voulez-vous supprimer cette URL ?");
+    
+                if (isConfirmed) {
+                    deleteForm.submit();
+                }
+            });
+        });
+    </script>
+
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const dropdownLinks = document.querySelectorAll('.user-profile .dropdown-content a');
+
+            dropdownLinks.forEach(link => {
+                link.addEventListener('click', function () {
+                    // Retire la classe active des autres liens
+                    dropdownLinks.forEach(l => {
+                        l.classList.remove('active');
+                    });
+
+                    // Ajoute la classe active au lien cliqué
+                    this.classList.add('active');
+                });
+            });
+        });
+    </script>
+
+
+    <script>
+        const tagSelect = document.getElementById('tag-select');
+        const addTagForm = document.getElementById('add-tag-form');
+        const deleteTagPopup = document.getElementById('delete-tag-popup');
+
+        // Afficher le formulaire ou le popup en fonction de la sélection
+        tagSelect.addEventListener('change', function () {
+            if (this.value === 'ajouter') {
+                addTagForm.style.display = 'block';
+                deleteTagPopup.style.display = 'none';
+            } else if (this.value === 'supprimer') {
+                addTagForm.style.display = 'none';
+                deleteTagPopup.style.display = 'block';
+            } else {
+                addTagForm.style.display = 'none';
+                deleteTagPopup.style.display = 'none';
+            }
+        });
+
+        // Fonction pour ajouter un tag
+        function addTag() {
+            const newTag = document.getElementById('new-tag').value;
+            if (newTag) {
+                fetch('/add_tag', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ valeur: newTag })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Recharge la page pour afficher le nouveau tag
+                        location.reload();
+                    } else {
+                        alert('Erreur lors de l\'ajout du tag.');
+                    }
+                });
+            }
+        }
+
+        // Fonction pour supprimer un tag
+        document.getElementById('tag-list').addEventListener('click', function (event) {
+            if (event.target.classList.contains('delete-btn')) {
+                const tagValue = event.target.dataset.tag;
+
+                const confirmDelete = confirm(`Voulez-vous supprimer le tag "${tagValue}" ?`);
+                if (confirmDelete) {
+                    fetch('/delete_tag', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ valeur: tagValue })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // Supprime l'élément de la liste du popup
+                            event.target.parentElement.remove();
+
+                            // Supprime également l'option dans la liste déroulante
+                            const options = tagSelect.options;
+                            for (let i = 0; i < options.length; i++) {
+                                if (options[i].value === tagValue) {
+                                    tagSelect.remove(i);
+                                    break;
+                                }
+                            }
+                        } else {
+                            alert('Erreur lors de la suppression du tag.');
+                        }
+                    })
+                    .catch(() => alert('Une erreur est survenue lors de la suppression.'));
+                }
+            }
+        });
+
+        // Fonction pour fermer le popup
+        function closeTagPopup() {
+            deleteTagPopup.style.display = 'none';
+            tagSelect.selectedIndex = 0;
+            //tagSelect.value = ''; // Réinitialiser la sélection
+        }
+
+    </script>
+
+    <script>
+        
+        const sourceSelect = document.getElementById('source_plateforme');
+        const addSourceForm = document.getElementById('add-source-form');
+        const deletePopup = document.getElementById('delete-source-popup');
+
+        // Afficher le formulaire d'ajout ou le popup de suppression en fonction de la sélection
+        sourceSelect.addEventListener('change', function () {
+            if (this.value === 'ajouter') {
+                addSourceForm.style.display = 'block';
+                deletePopup.style.display = 'none';
+            } else if (this.value === 'supprimer') {
+                addSourceForm.style.display = 'none';
+                deletePopup.style.display = 'block';
+            } else {
+                addSourceForm.style.display = 'none';
+                deletePopup.style.display = 'none';
+            }
+        });
+
+        // Fonction pour ajouter une source (déjà fonctionnelle)
+        function addSource() {
+            const newSource = document.getElementById('new-source').value;
+            if (newSource) {
+                fetch('/add_source', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nom: newSource })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            location.reload(); // Recharge pour mettre à jour la liste
+                        } else {
+                            alert('Erreur lors de l\'ajout de la source.');
+                        }
+                    });
+            }
+        }
+
+        // Fonction pour supprimer une source
+        document.getElementById('source-list').addEventListener('click', function (event) {
+            if (event.target.classList.contains('delete-btn')) {
+                const sourceName = event.target.dataset.source;
+
+                const confirmDelete = confirm(`Voulez-vous supprimer la source "${sourceName}" ?`);
+                if (confirmDelete) {
+                    fetch('/delete_source', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ nom: sourceName })
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Supprime l'élément de la liste du popup
+                                event.target.parentElement.remove();
+
+                                // Supprime également l'option dans la liste déroulante
+                                const options = sourceSelect.options;
+                                for (let i = 0; i < options.length; i++) {
+                                    if (options[i].value === sourceName) {
+                                        sourceSelect.remove(i);
+                                        break;
+                                    }
+                                }
+                                
+                            } else {
+                                alert('Erreur lors de la suppression de la source.');
+                            }
+                        })
+                        .catch(() => alert('Une erreur est survenue lors de la suppression.'));
+                }
+            }
+        });
+
+        // Fonction pour fermer le popup
+        function closePopup() {
+            deletePopup.style.display = 'none';
+            sourceSelect.value = ''; // Réinitialiser la sélection de la liste
+        }
+    </script>
+
+    
+</body>
+
+<script>
+        // JavaScript pour positionner la barre de défilement horizontale en bas de la page
+        window.onload = function() {
+            var container = document.getElementById('content-container');
+            var content = document.getElementById('content');
+            container.scrollLeft = content.offsetWidth - container.offsetWidth;
+        };
+    </script> 
+
+</html>

@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+instance/
+.env
+*.sqlite3
+*.db
+.DS_Store
+*.log
+*.bak
+*.swp
+.env*
+venv/
+*.egg-info/
+*.egg/
+.mypy_cache/
+.idea/
+.vscode/

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration des Utilisateurs</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Style général du tableau */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        /* Style de l'en-tête du tableau */
+        th {
+            background-color: #4E5D6C;
+            color: white;
+            text-align: left;
+            padding: 12px 15px;
+            font-size: 16px;
+            border-bottom: 2px solid #dee2e6;
+        }
+
+        /* Style des cellules du tableau */
+        td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        /* Style des formulaires */
+        .form-inline {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            background-color: #f7f7f7;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 0;
+        }
+
+        .form-control {
+            width: auto;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            padding: 5px;
+            border: none;
+            border-radius: 4px;
+            background-color: #526E83;
+            color: white;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            background-color: #0056B3;
+        }
+
+        .btn-primary {
+            padding: 10px 20px;
+            background-color: #526e83;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: background-color 0.3s ease;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            color: white;
+        }
+
+        .delete-button {
+            padding: 5px 10px;
+            color: white;
+            background-color: #8B0000;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        .delete-button:hover {
+            background-color: #8B0000;
+        }
+
+        /* Autres styles selon vos précédentes instructions */
+        footer {
+            position: relative;
+            height: 60px;
+        }
+    </style>
+</head>
+
+<body>
+
+    {% with messages = get_flashed_messages() %}
+         {% if messages %}
+             <div class="alert alert-success" role="alert">
+                 {% for message in messages %}
+                     {{ message }}
+             {% endfor %}
+             </div>
+        {% endif %}
+    {% endwith %}
+
+    <div class="container">
+        <h2 class="my-4">Administration des Utilisateurs</h2>
+
+        <div class="form-inline mb-3">
+            <a href="#" class="btn btn-primary" data-toggle="modal" data-target="#addUserModal">Ajouter un Utilisateur</a>
+        </div>
+
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Nom d'Utilisateur</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td>{{ user.username }}</td>
+                    <td>
+                        <a href="#" class="btn btn-warning" data-toggle="modal" data-target="#editUserModal" data-id="{{ user.id }}" data-username="{{ user.username }}">Modifier</a>
+                        <form action="{{ url_for('delete_user', user_id=user.id) }}" method="POST" style="display:inline;">
+                            <button type="submit" class="delete-button">Supprimer</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal pour ajouter un utilisateur -->
+    <div class="modal fade" id="addUserModal" tabindex="-1" role="dialog" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addUserModalLabel">Ajouter un Utilisateur</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form action="{{ url_for('add_user') }}" method="POST">
+                        <div class="form-group">
+                            <label for="username">Nom d'utilisateur</label>
+                            <input type="text" class="form-control" name="username" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="password">Mot de Passe</label>
+                            <input type="password" class="form-control" name="password" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Ajouter</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour modifier un utilisateur -->
+<div class="modal fade" id="editUserModal" tabindex="-1" role="dialog" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel">Modifier un Utilisateur</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form action="" method="POST" id="editUserForm">
+                    <div class="form-group">
+                        <label for="edit-username">Nom d'Utilisateur</label>
+                        <input type="text" class="form-control" id="edit-username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-password">Mot de Passe</label>
+                        <input type="password" class="form-control" id="edit-password" name="password">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Modifier</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.9.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+
+     // Vider les champs lors de l'ouverture du modal pour ajouter un utilisateur
+     $('#addUserModal').on('show.bs.modal', function () {
+        var modal = $(this);
+        modal.find('.modal-body input').val(''); // Vider tous les champs d'entrée
+    });
+
+    // Script pour préremplir le formulaire de modification avec les données actuelles de l'utilisateur
+    $('#editUserModal').on('show.bs.modal', function (event) {
+        var button = $(event.relatedTarget); // Bouton qui a déclenché le modal
+        var userId = button.data('id'); // ID de l'utilisateur
+        var username = button.data('username'); // Nom d'utilisateur
+
+        // Remplit les champs du modal avec les valeurs actuelles
+        var modal = $(this);
+        modal.find('.modal-body #edit-username').val(username);
+        modal.find('#editUserForm').attr('action', '/edit_user/' + userId);
+    });
+</script>
+</body>
+
+</html>
