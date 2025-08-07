@@ -1,9 +1,7 @@
 __pycache__/
 *.pyc
-instance/
 .env
 *.sqlite3
-*.db
 .DS_Store
 *.log
 *.bak
