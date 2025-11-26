@@ -1,0 +1,107 @@
+{% from "_layout/components.html" import status_badge, quality_meter, pagination %}
+
+<!-- Table des ancres -->
+<div id="anchors-table">
+
+        <!-- Pagination en haut -->
+    {% if total_pages > 1 %}
+    <div class="px-6 py-4 border-b border-gray-700">
+        {{ pagination(current_page, total_pages, pagination_base_url, "anchors-table") }}
+    </div>
+    {% endif %}
+
+    <div class="bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-gray-800">
+                    <tr>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Ancre</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Utilisation</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Pourcentage</th>
+                        <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Type</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-700">
+                    {% for anchor in anchors %}
+                    <tr class="hover:bg-gray-800/50 transition-colors">
+
+                        <!-- Ancre -->
+                        <td class="px-6 py-4 w-1/2">
+                            <div class="whitespace-normal break-words">
+                                <div class="font-medium text-white" title="{{ anchor.text }}">
+                                    "{{ anchor.text }}"
+                                </div>
+                                <div class="text-sm text-gray-400">
+                                    {{ anchor.length }} caractères
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Utilisation -->
+                        <td class="px-6 py-4 w-1/6">
+                            <div class="flex items-center space-x-3">
+                                <div class="text-xl font-bold text-primary">{{ anchor.count }}</div>
+                                <div class="text-sm text-gray-400">
+                                    {% if anchor.trend > 0 %}
+                                    <span class="text-accent">+{{ anchor.trend }}</span>
+                                    {% elif anchor.trend < 0 %}
+                                    <span class="text-danger">{{ anchor.trend }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Pourcentage -->
+                        <td class="px-6 py-4 w-1/5">
+                            <div class="flex items-center space-x-3">
+                                <div class="text-lg font-bold {{ 'text-danger' if anchor.ratio > 15 else 'text-white' }}">
+                                    {{ "%.1f"|format(anchor.ratio) }}%
+                                </div>
+                                
+                                <!-- Barre de progression -->
+                                <div class="flex-1 max-w-24">
+                                    <div class="w-full bg-gray-700 rounded-full h-2">
+                                        <div class="h-2 rounded-full transition-all
+                                            {% if anchor.ratio > 15 %}bg-danger
+                                            {% elif anchor.ratio > 10 %}bg-warn
+                                            {% else %}bg-accent{% endif %}"
+                                            style="width: {% if anchor.ratio * 2 > 100 %}100{% else %}{{ anchor.ratio * 2 }}{% endif %}%">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        
+                        <!-- Type -->
+                        <td class="px-6 py-4 w-1/6">
+                            {% if anchor.type == 'branded' %}
+                                {{ status_badge("high_quality", "Marque") }}
+                            {% elif anchor.type == 'exact_match' %}
+                                {{ status_badge("medium_quality", "Exacte") }}
+                            {% elif anchor.type == 'partial_match' %}
+                                {{ status_badge("medium_quality", "Partielle") }}
+                            {% elif anchor.type == 'generic' %}
+                                {{ status_badge("low_quality", "Générique") }}
+                            {% else %}
+                                {{ status_badge("info", "URL") }}
+                            {% endif %}
+                        </td>
+
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Résultats vides -->
+{% if not anchors %}
+<div class="bg-gray-900 rounded-2xl shadow-lg p-12 text-center">
+    <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <h3 class="text-xl font-semibold text-white mb-2">Aucun ancre trouvé</h3>
+    <p class="text-gray-400 mb-6">Ajoutez des backlinks pour voir vos ancres.</p>
+</div>
+{% endif %}

@@ -1,0 +1,499 @@
+{% extends "_layout/base.html" %}
+{% from "_layout/components.html" import content_card, status_badge, alert, note_lecture %}
+
+{% block title %}Configuration - LinkGuardian{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Configuration</h1>
+            <p class="text-gray-400 mt-1">Configurez votre compte et vos intégrations</p>
+        </div>
+    </div>
+    
+    <!-- Contenu avec navigation des onglets -->
+    <div 
+        x-data="{
+            activeTab: new URLSearchParams(window.location.search).get('tab') || 'integrations',
+            setTab(tab) {
+                this.activeTab = tab;
+                const url = new URL(window.location);
+                url.searchParams.set('tab', tab);
+                window.history.pushState({}, '', url);
+            }
+        }"
+    >
+        <!-- Navigation des onglets -->
+        <div class="bg-gray-900 rounded-2xl p-2 mb-6">
+            <nav class="flex space-x-2">
+                <button @click="setTab('integrations')" 
+                    :class="activeTab === 'integrations' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'"
+                    class="px-4 py-2 rounded-xl font-medium transition-all">
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
+                    </svg>
+                    Intégrations
+                </button>
+        
+                <!--
+                <button @click="activeTab = 'notifications'" 
+                        :class="activeTab === 'notifications' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'"
+                        class="px-4 py-2 rounded-xl font-medium transition-all">
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-5 5v-5zM10.07 2.82l-.908.908a3.87 3.87 0 00-1.13 2.74v2.36a7.91 7.91 0 01-.82 3.74l-.82 1.64a1 1 0 00.9 1.44h9.78a1 1 0 00.9-1.44l-.82-1.64a7.91 7.91 0 01-.82-3.74V6.47a3.87 3.87 0 00-1.13-2.74l-.908-.908a1.94 1.94 0 00-2.74 0z"/>
+                    </svg>
+                    Notifications
+                </button>
+                -->
+
+                {% if current_user.role == "main_admin" or current_user.role == "admin" %}
+                    <button @click="setTab('admin')" 
+                            :class="activeTab === 'admin' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'"
+                            class="px-4 py-2 rounded-xl font-medium transition-all">
+
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        Administrateur
+                    </button>
+
+                {% endif %}
+
+                <button @click="setTab('sharing')" 
+                        :class="activeTab === 'sharing' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'"
+                        class="px-4 py-2 rounded-xl font-medium transition-all">
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M7 8h10M7 12h4m1 8a9 9 0 100-18 9 9 0 000 18z"/>
+                    </svg>
+                    Partage
+                </button>
+
+                <button @click="setTab('account')" 
+                        :class="activeTab === 'account' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'"
+                        class="px-4 py-2 rounded-xl font-medium transition-all">
+
+                    <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                    Compte
+                </button>
+
+            </nav>
+        </div>
+        <!-- Onglet Intégrations -->
+        <div x-show="activeTab === 'integrations'" class="space-y-6">
+            <!-- Intégrations API -->
+            {% call content_card(title="Intégrations API") %}
+            <div class="space-y-6">
+                <!-- Babbar API -->
+                <div class="flex items-start justify-between p-4 bg-gray-800/50 rounded-xl">
+                    <div class="flex items-start space-x-4">
+
+                        <div class="w-12 h-12 bg-primary/20 rounded-xl flex items-center justify-center">
+                            <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M12 4v16m8-8H4m2-6l12 12m0-12L6 18" />
+                            </svg>
+                        </div>
+                        
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-white">Babbar API</h4>
+                            <p class="text-sm text-gray-400 mt-1">Métriques Page Value et Page Trust pour l'analyse de qualité</p>
+                            <div class="mt-2">
+                                {{ status_badge("success", "Connecté") }}
+                                {% if config and config.last_babbar_sync %}
+                                    <span class="text-xs text-gray-500 ml-2">
+                                        Dernière sync : {{ config.last_babbar_sync.strftime("%d/%m/%Y %H:%M") }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-xs text-gray-500 ml-2">Jamais synchronisé</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- SerpApi -->
+                <div class="flex items-start justify-between p-4 bg-gray-800/50 rounded-xl">
+                    <div class="flex items-start space-x-4">
+                        <!-- Icône SerpApi -->
+                        <div class="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+                            <svg class="w-6 h-6" viewBox="0 0 48 48">
+                                <path fill="#4285F4" d="M24 9.5c3.15 0 5.29 1.36 6.51 2.5l4.75-4.75C32.29 4.5 28.5 3 24 3 14.64 3 6.81 8.64 3.69 16.19l5.99 4.66C10.74 14.89 16.8 9.5 24 9.5z"/>
+                                <path fill="#34A853" d="M46.5 24.5c0-1.46-.13-2.87-.38-4.25H24v8.05h12.7c-.55 2.96-2.19 5.46-4.65 7.15l7.15 5.55C43.9 37.59 46.5 31.51 46.5 24.5z"/>
+                                <path fill="#FBBC05" d="M9.68 28.68a14.6 14.6 0 01-.76-4.18c0-1.46.26-2.88.76-4.18l-5.99-4.66A21.41 21.41 0 002.5 24.5a21.4 21.4 0 001.19 8.84l5.99-4.66z"/>
+                                <path fill="#EA4335" d="M24 46c5.7 0 10.49-1.89 13.99-5.15l-7.15-5.55c-1.98 1.34-4.52 2.15-6.84 2.15-7.2 0-13.26-5.39-14.32-12.35l-5.99 4.66C6.81 39.36 14.64 46 24 46z"/>
+                            </svg>
+                        </div>
+
+
+                        <!-- Contenu texte -->
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-white">SerpApi</h4>
+                            <p class="text-sm text-gray-400 mt-1">
+                                Vérifie l’indexation des URLs sur Google via l’API SerpApi.
+                            </p>
+
+                            <!-- État de connexion -->
+                            <div class="mt-2">
+                                {{ status_badge("success", "Connecté") }}
+                                {% if config and config.last_serpapi_sync %}
+                                    <span class="text-xs text-gray-500 ml-2">
+                                        Dernière sync : {{ config.last_serpapi_sync.strftime("%d/%m/%Y %H:%M") }}
+                                    </span>
+                                {% else %}
+                                    <span class="text-xs text-gray-500 ml-2">Jamais synchronisé</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration des clés API -->
+                <div class="border-t border-gray-700 pt-6">
+                    <h5 class="font-medium text-white mb-4">Configuration des clés API</h5>
+                    <div class="space-y-4">
+                        <div>
+
+                            <form method="POST" action="{{ url_for('config_routes.save_babbar_api_key') }}" id="babbarForm">
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Clé API Babbar</label>
+                                <div class="flex space-x-2">
+                                    <!-- Champ visible (vide pour l’utilisateur) -->
+                                    <input type="password"
+                                        name="babbar_api_key"
+                                        id="babbar_api_key"
+                                        placeholder="Entrez votre clé API Babbar"
+                                        value=""
+                                        class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white 
+                                            focus:outline-none focus:ring-2 focus:ring-primary">
+
+                                    <!-- Champ caché contenant la clé par défaut -->
+                                    <input type="hidden" id="babbar_default_key"
+                                        value="{{ config.babbar_api_key if config and config.babbar_api_key else '' }}">
+
+                                    <!-- Boutons -->
+                                    <button type="button" onclick="testBabbarAPI()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-sm font-medium border border-gray-700 transition-all duration-200 shadow-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z"/>
+                                        </svg>
+                                        Tester
+                                    </button>
+
+                                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        Sauvegarder
+                                    </button>
+                                </div>
+                            </form>
+
+                        </div>
+                        
+                        <div>
+                            <form method="POST" action="{{ url_for('config_routes.save_serpapi_api_key') }}" id="serpapiForm">
+                                <label class="block text-sm font-medium text-gray-400 mb-2">Clé API SerpApi</label>
+                                <div class="flex space-x-2">
+                                    <input type="password"
+                                        name="serpapi_key"
+                                        id="serpapi_key"
+                                        placeholder="Entrez votre clé API SerpApi"
+                                        value=""
+                                        class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white 
+                                            focus:outline-none focus:ring-2 focus:ring-primary">
+                                    
+                                    <input type="hidden" id="serpapi_default_key"
+                                        value="{{ config.serpapi_key if config and config.serpapi_key else '' }}">
+
+                                    <button type="button" onclick="testSerpApiKey()" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white text-sm font-medium border border-gray-700 transition-all duration-200 shadow-sm">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z"/>
+                                        </svg>
+                                        Tester
+                                    </button>
+
+                                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-sm font-semibold transition-all duration-200 shadow-md hover:shadow-lg">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                        Sauvegarder
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endcall %}
+        </div>
+
+
+        <!-- Onglet Administrateur -->
+        {% if current_user.role == "main_admin" or current_user.role == "admin"  %}
+            <div x-show="activeTab === 'admin'" class="space-y-6">
+                {% include 'settings/_table_admin.html' %}
+            </div>
+        {% endif %}
+        
+        <!-- Onglet Notifications 
+        <div x-show="activeTab === 'notifications'" class="space-y-6">
+            {% call content_card(title="Notifications par email") %}
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-medium text-white">Nouveaux backlinks détectés</div>
+                        <div class="text-sm text-gray-400">Recevoir un email lors de la détection de nouveaux liens</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-medium text-white">Liens perdus</div>
+                        <div class="text-sm text-gray-400">Alertes en cas de perte de backlinks</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-medium text-white">Rapports mensuels</div>
+                        <div class="text-sm text-gray-400">Rapport automatique chaque début de mois</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" checked class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+                
+                <div class="flex items-center justify-between">
+                    <div>
+                        <div class="font-medium text-white">Opportunités détectées</div>
+                        <div class="text-sm text-gray-400">Nouvelles possibilités d'acquisition de liens</div>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                </div>
+            </div>
+            {% endcall %}
+        </div>
+        -->
+
+        <!-- Onglet Partage -->
+        <div x-show="activeTab === 'sharing'" class="space-y-6">
+            {% include 'settings/_table_sharing.html' %}
+        </div>
+
+
+        <!-- Onglet Compte -->
+        <div x-show="activeTab === 'account'" class="space-y-6">
+
+            {% call content_card(title="Profil et informations du compte") %}
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                <!-- Colonne Avatar -->
+                <div class="flex flex-col items-center space-y-4">
+
+                    <form id="profile_form"
+                        action="{{ url_for('config_routes.update_profile_picture') }}"
+                        method="POST"
+                        enctype="multipart/form-data"
+                        class="flex flex-col items-center">
+
+                        <label for="profile_picture_input" class="group relative cursor-pointer">
+
+                            <img src="{{ url_for('static', filename='uploads/avatars/' + (current_user.profile_picture or 'default_avatar.png')) }}"
+                                id="profile_preview"
+                                class="w-40 h-40 rounded-full object-cover border border-gray-700 shadow group-hover:opacity-70 transition">
+
+                            <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100
+                                        bg-black/40 rounded-full text-white text-sm font-medium transition">
+                                📸 Changer de photo
+                            </div>
+                        </label>
+
+                        <input id="profile_picture_input"
+                            type="file"
+                            name="profile_picture"
+                            accept="image/*"
+                            class="hidden"
+                            onchange="autoUpload()">
+                    </form>
+                </div>
+
+
+                <!-- Colonne Infos -->
+                <div class="lg:col-span-2">
+
+                    <form action="{{ url_for('config_routes.edit_own_information') }}" method="POST" class="space-y-4">
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1">Nom</label>
+                                <input type="text" name="last_name" value="{{ current_user.last_name }}"
+                                    class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-primary">
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-gray-400 mb-1">Prénom</label>
+                                <input type="text" name="first_name" value="{{ current_user.first_name }}"
+                                    class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-primary">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-400 mb-1">Email</label>
+                            <input type="email" name="email" value="{{ current_user.email }}"
+                                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-primary">
+                        </div>
+
+                        <button type="submit" 
+                            class="mt-4 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium flex items-center gap-2 transition-all">
+                            💾 Sauvegarder
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <script>
+            function autoUpload() {
+                const input = document.getElementById("profile_picture_input");
+                const preview = document.getElementById("profile_preview");
+
+                if (input.files && input.files[0]) {
+                    preview.src = URL.createObjectURL(input.files[0]);
+                    document.getElementById("profile_form").submit();
+                }
+            }
+            </script>
+
+            {% endcall %}
+
+            {% call content_card(title="Sécurité") %}
+            <div class="space-y-4">
+                <h5 class="font-medium text-white mb-2">Changer le mot de passe</h5>
+                
+                <form method="POST" action="{{ url_for('config_routes.change_own_password') }}">
+                    <div class="space-y-3">
+                        <input type="password" 
+                            name="current_password"
+                            placeholder="Mot de passe actuel"
+                            required
+                            class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary">
+                        
+                        <input type="password" 
+                            name="new_password"
+                            placeholder="Nouveau mot de passe"
+                            required
+                            minlength="6"
+                            class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary">
+                        
+                        <input type="password" 
+                            name="confirm_password"
+                            placeholder="Confirmer le nouveau mot de passe"
+                            required
+                            minlength="6"
+                            class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    
+                    <button type="submit" 
+                        class="mt-4 px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium flex items-center gap-2 transition-all">
+                        💾 Sauvegarder
+                    </button>
+
+                </form>
+
+            </div>
+            {% endcall %}
+        </div>
+    </div>
+</div>
+
+<style>
+.slider::-webkit-slider-thumb {
+    appearance: none;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #38bdf8;
+    cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #38bdf8;
+    cursor: pointer;
+    border: none;
+}
+</style>
+
+<script>
+function testBabbarAPI() {
+    const apiKey = document.querySelector('input[name="babbar_api_key"]').value;
+    fetch("/configuration/integrations/test-babbar", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({ babbar_api_key: apiKey })
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+    })
+    .catch(err => {
+        alert("Erreur de connexion : " + err);
+    });
+}
+
+function testSerpApiKey() {
+    const apiKey = document.querySelector('input[name="serpapi_key"]').value;
+    fetch("/configuration/integrations/test-serpapi", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({ serpapi_key: apiKey })
+    })
+    .then(r => r.json())
+    .then(data => {
+        alert(data.message);
+    })
+    .catch(err => {
+        alert("Erreur de connexion : " + err);
+    });
+}
+
+document.getElementById("babbarForm").addEventListener("submit", function() {
+    const visible = document.getElementById("babbar_api_key");
+    const hidden = document.getElementById("babbar_default_key");
+
+    // Si l'utilisateur n'a rien saisi, on envoie la valeur par défaut
+    if (!visible.value.trim()) {
+        visible.value = hidden.value;
+    }
+});
+
+
+document.getElementById("serpapiForm").addEventListener("submit", function() {
+    const visible = document.getElementById("serpapi_key");
+    const hidden = document.getElementById("serpapi_default_key");
+
+    if (!visible.value.trim()) {
+        visible.value = hidden.value;
+    }
+});
+</script>
+
+{% endblock %}

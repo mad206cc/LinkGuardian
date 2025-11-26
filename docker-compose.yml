@@ -1,11 +1,189 @@
-version: '3.8'
+version: "3.9"
 
 services:
-  linkguardian:
+
+  web:
     build: .
-    ports:
-      - "5000:5000"
+    container_name: linkguardian_web
+    restart: unless-stopped
     volumes:
       - .:/app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - postgres
+      - rabbitmq
     environment:
-      - FLASK_ENV=development
+      FLASK_ENV: development
+      FLASK_DEBUG: 1
+      PYTHONUNBUFFERED: 1          # ← AJOUTER CECI
+      WATCHDOG_POLLING: "true"     # ← ET CECI pour améliorer le hot-reload
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Karavel123#
+      POSTGRES_DB: site
+      DB_HOST: postgres
+      DB_PORT: 5432
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+
+  # ============================================
+  # 🔥 WORKER 1 : URGENT + STANDARD
+  # Priorité aux vérifications manuelles immédiates
+  # ============================================
+  worker_1:
+    build: .
+    container_name: linkguardian_worker_1
+    restart: always
+    command: celery -A celery_app.celery worker -Q urgent,standard --concurrency=6 --loglevel=INFO --hostname=worker1@%h
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Karavel123#
+      POSTGRES_DB: site
+      DB_HOST: postgres
+      DB_PORT: 5432
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+
+  # ============================================
+  # 💪 WORKER 2 : STANDARD
+  # Dédié aux imports massifs et vérifications auto
+  # ============================================
+  worker_2:
+    build: .
+    container_name: linkguardian_worker_2
+    restart: always
+    command: celery -A celery_app.celery worker -Q standard --concurrency=8 --loglevel=INFO --hostname=worker2@%h
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Karavel123#
+      POSTGRES_DB: site
+      DB_HOST: postgres
+      DB_PORT: 5432
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+
+  # ============================================
+  # 🌊 WORKER 3 : STANDARD + WEEKLY
+  # Gère la charge mixte et les tâches planifiées
+  # ============================================
+  worker_3:
+    build: .
+    container_name: linkguardian_worker_3
+    restart: always
+    command: celery -A celery_app.celery worker -Q standard,weekly --concurrency=8 --loglevel=INFO --hostname=worker3@%h
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Karavel123#
+      POSTGRES_DB: site
+      DB_HOST: postgres
+      DB_PORT: 5432
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+  # ============================================
+  # ⏰ CELERY BEAT : Planificateur
+  # ============================================
+  beat:
+    build: .
+    container_name: linkguardian_beat
+    restart: always
+    command: celery -A celery_app.celery beat --loglevel=INFO
+    depends_on:
+      - postgres
+      - rabbitmq
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Karavel123#
+      POSTGRES_DB: site
+      DB_HOST: postgres
+      DB_PORT: 5432
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+
+
+  # ============================================
+  # 📊 FLOWER : Monitoring Celery (OPTIONNEL)
+  # Interface web pour surveiller les workers
+  # Accessible sur http://localhost:5555
+  # ============================================
+  flower:
+    build: .
+    container_name: linkguardian_flower
+    restart: unless-stopped
+    command: celery -A celery_app.celery flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - rabbitmq
+      - worker_1
+      - worker_2
+      - worker_3
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+
+  # ============================================
+  # 🗄️ BASE DE DONNÉES
+  # ============================================
+  postgres:
+    image: postgres:15
+    container_name: linkguardian_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Karavel123#
+      POSTGRES_DB: site
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  # ============================================
+  # 🐰 MESSAGE BROKER
+  # ============================================
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    container_name: linkguardian_rabbitmq
+    restart: always
+    ports:
+      - "5672:5672"   # Port AMQP
+      - "15672:15672" # Interface web management
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin123
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:
+
+# ============================================
+# 📊 CAPACITÉS TOTALES DU SYSTÈME
+# ============================================
+# Worker 1: 6 tâches simultanées (urgent + standard)
+# Worker 2: 8 tâches simultanées (standard)
+# Worker 3: 8 tâches simultanées (standard + weekly)
+# 
+# TOTAL: 22 tâches simultanées
+# Avec prefetch_multiplier=4 : 88 tâches en préchargement
+#
+# Performance estimée :
+# - Import 100 sites : ~1 minute
+# - Import 500 sites : ~4 minutes
+# - Vérification urgente : <5 secondes
+#
+# Monitoring :
+# - Flower : http://localhost:5555
+# - RabbitMQ Management : http://localhost:15672 (admin/admin123)

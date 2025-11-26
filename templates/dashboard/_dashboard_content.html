@@ -1,0 +1,155 @@
+{% from "_layout/components.html" import kpi_card, content_card, alert, status_badge, info_tooltip %}
+{% from "_layout/charts_simple.html" import line_chart, bar_chart, pie_chart, scatter_chart, donut_chart, bubble_chart %}
+{% from "_layout/charts.html" import stacked_bar_chart , gauge_chart %}
+
+<!-- Alertes -->
+{% if range_param == '1m' %}
+    {{ alert("Nouveau rapport mensuel disponible", "info") }}
+
+{% elif range_param == '3m' %}
+    {{ alert("Nouveau rapport trimestriel disponible", "info") }}
+
+{% elif range_param == '6m' %}
+    {{ alert("Nouveau rapport semestriel disponible", "info") }}
+
+{% elif range_param == '12m' %}
+    {{ alert("Nouveau rapport annuel disponible", "info") }}
+{% endif %}
+
+
+<div id="kpi-cards" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6">
+    {{ kpi_card(
+        title="Backlinks totaux",
+        value= kpis["total_backlinks"],
+        change="",
+        change_type= "",
+        icon='<svg class="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20"><path d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z"/></svg>',
+        subtitle="A l'instant actuel", 
+        note_lecture = "Affiche le nombre total de backlinks actuels."
+    ) }}
+
+    {{ kpi_card(
+        title="Domaines référents",
+        value= kpis['total_domains']|string,
+        change= kpis['domains_change']|string,
+        change_type= kpis['domains_change_type']|string,
+        icon='<svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m-9 9a9 9 0 019-9"/></svg>',
+        subtitle="Domaines uniques", 
+        note_lecture = "Affiche le nombre de domaines uniques des backlinks actuels, et le nombre d'ajouts ces X derniers jours."
+    ) }}
+
+    {{ kpi_card(
+        title="Liens gagnés",
+        value=kpis['links_gained'],
+        change="",
+        change_type="",
+        icon='<svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>',
+        subtitle=range_label ,
+        note_lecture = "Affiche le nombre de liens gagnés ces X derniers jours, comprenant ceux qui devient actifs et ceux ajoutés."
+    ) }}
+    
+    {{ kpi_card(
+        title="Liens perdus",
+        value=kpis['links_lost'],
+        change="",
+        change_type="",
+        icon='<svg class="w-5 h-5 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg>',
+        subtitle=range_label, 
+        note_lecture = "Affiche le nombre de liens perdus ces X derniers jours, comprenant ceux qui devient inactifs et ceux supprimés."
+    ) }}
+
+    {{ kpi_card(
+        title="% Follow",
+        value=(kpis['follow_percentage']|string) + "%",
+        change= kpis['follow_change'],
+        change_type= kpis['follow_change_type'],
+        icon='<svg class="w-5 h-5 text-primary" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>',
+        subtitle="Liens dofollow", 
+        note_lecture = "Affiche le pourcentage de liens dofollow actuels et l'augmentation de ce pourcentage ces X derniers jours."
+    ) }}
+    
+    {{ kpi_card(
+        title="Score qualité",
+        value=(kpis['avg_quality']|string) + "/100",
+        change= kpis['quality_change'] |string,
+        change_type=kpis['quality_change_type'] |string,
+        icon='<svg class="w-5 h-5 text-warn" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>',
+        subtitle="Moyenne pondérée", 
+        note_lecture = "Affiche la moyenne pondérée des scores de qualité des backlinks actuels, et l'augmentation de cette moyenne ces X derniers jours."
+    ) }}
+</div>
+
+<!-- Graphiques principaux -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <!-- Évolution des backlinks -->
+    {{ line_chart(
+        chart_id="evolution-chart-" ~ timestamp|string,
+        title="Évolution des backlinks et domaines",
+        data=[
+            {
+                "name": "Backlinks",
+                "x": charts_data['evolution'][0]["x"],
+                "y": charts_data['evolution'][0]["y"]
+            },
+            {
+                "name": "Domaines",
+                "x": charts_data['evolution'][1]["x"],
+                "y": charts_data['evolution'][1]["y"]
+            }
+        ] 
+    ) }}
+    
+    <!-- Répartition Follow/NoFollow -->
+    {{ donut_chart(
+        chart_id="follow-chart-" ~ timestamp|string,
+        title="Répartition Follow/NoFollow",
+        data={
+            "labels": charts_data['follow_distribution']['labels'],
+            "values": charts_data['follow_distribution']['values'],
+            "colors": charts_data['follow_distribution']['colors']
+        }
+    ) }}
+</div>
+
+<!-- Graphiques secondaires -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+    <!-- Statuts HTTP -->
+    {{ bar_chart(
+        chart_id="http-status-chart-" ~ timestamp|string,
+        title="Répartition des statuts HTTP",
+        orientation="v",
+        data={
+            "labels": charts_data['http_status']['labels'],
+            "values": charts_data['http_status']['values'],
+            "colors": charts_data['http_status']['colors']
+        }
+    ) }}
+    
+    <!-- Top ancres -->
+    {{ bar_chart(
+        chart_id="anchors-chart-" ~ timestamp|string,
+        title="Top 10 des ancres",
+        orientation="h",
+        data={
+            "labels": charts_data['top_anchors']['labels'],
+            "values": charts_data['top_anchors']['values'],
+            "colors": charts_data['top_anchors']['colors']
+        }
+    ) }}
+</div>
+
+<!-- Page Value vs Page Trust -->
+<div class="grid grid-cols-1 gap-6 mt-6">
+    {{ bubble_chart(
+        chart_id="pv-pt-scatter-" ~ timestamp|string,
+        title="Page Value vs Page Trust (Top 50 pages)",
+        x_title="Page Value",
+        y_title="Page Trust",
+        data={
+            "x": charts_data['pv_pt_scatter']['x'],
+            "y":  charts_data['pv_pt_scatter']['y'],
+            "labels":  charts_data['pv_pt_scatter']['labels'],
+            "sizes":  charts_data['pv_pt_scatter']['sizes']
+        }
+    ) }}
+</div>

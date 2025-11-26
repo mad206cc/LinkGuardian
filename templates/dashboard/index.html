@@ -1,0 +1,121 @@
+{% extends "_layout/base.html" %}
+{% from "_layout/components.html" import kpi_card, content_card, alert, status_badge %}
+{% from "_layout/charts_simple.html" import line_chart, bar_chart, pie_chart, scatter_chart, donut_chart %}
+{% from "_layout/charts.html" import stacked_bar_chart , gauge_chart %}
+
+{% block title %}Dashboard - LinkGuardian{% endblock %}
+
+
+{% block content %}
+
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Dashboard</h1>
+            <p class="text-gray-400 mt-1">Vue d'ensemble de votre profil de liens</p>
+        </div>
+        
+        <!-- Période de temps AVEC HTMX -->
+        <div class="flex items-center space-x-4">
+
+            <select name="tag"
+                hx-get="/dashboard/content"
+                hx-trigger="change"
+                hx-target="#dashboard-content"
+                hx-swap="innerHTML"
+                hx-indicator="#loading-spinner"
+                hx-include="[name='range'], [name='source'], this"
+                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary">
+
+                <option value="">Tous les tags</option>
+
+                {% for t in tags %}
+                    <option value="{{ t.valeur }}" 
+                        {% if filter_tag == t.valeur %}selected{% endif %}>
+                        {{ t.valeur }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <select name="source"
+                hx-get="/dashboard/content"
+                hx-trigger="change"
+                hx-target="#dashboard-content"
+                hx-swap="innerHTML"
+                hx-indicator="#loading-spinner"
+                hx-include="[name='range'], [name='tag'], this"
+                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary">
+
+                <option value="">Toutes les sources</option>
+
+                {% for s in sources %}
+                    <option value="{{ s.nom }}"
+                        {% if filter_source == s.nom %}selected{% endif %}>
+                        {{ s.nom }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <select name="range"
+                    id="range-selector"
+                    hx-get="/dashboard/content"
+                    hx-trigger="change"
+                    hx-target="#dashboard-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#loading-spinner"
+                    hx-include="this"
+                    class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="1m" {% if range_param == '1m' %}selected{% endif %}>Dernier mois</option>
+                        <option value="3m" {% if range_param == '3m' %}selected{% endif %}>3 derniers mois</option>
+                        <option value="6m" {% if range_param == '6m' %}selected{% endif %}>6 derniers mois</option>
+                        <option value="12m" {% if range_param == '12m' %}selected{% endif %}>12 derniers mois</option>
+            </select>
+            
+            <!-- 
+            <button hx-get="/dashboard/content"
+                    hx-include="#range-selector"
+                    hx-target="#dashboard-content"
+                    hx-swap="innerHTML"
+                    hx-indicator="#loading-spinner"
+                    class="btn-primary flex items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                Actualiser
+            </button>
+            -->
+
+            <!-- Indicateur de chargement -->
+            <!-- 
+            <div id="loading-spinner" class="htmx-indicator">
+                <svg class="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+            </div>
+            -->
+            
+        </div>
+    </div>
+
+    <!-- CONTENEUR DYNAMIQUE HTMX -->
+    <div id="dashboard-content">
+        {% include 'dashboard/_dashboard_content.html' %}
+    </div>
+    <!-- FIN CONTENEUR DYNAMIQUE -->
+    
+</div>
+
+<!-- CSS pour l'indicateur de chargement -->
+<style>
+.htmx-indicator {
+    display: none;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+    display: inline-block;
+}
+</style>
+
+{% endblock %}

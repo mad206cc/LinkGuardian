@@ -1,0 +1,79 @@
+{% from "_layout/components.html" import status_badge, quality_meter, pagination, note_lecture %}
+
+<!-- Table des backlinks - Partial HTMX -->
+<div id="backlinks-table" class="bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
+
+        <!-- Pagination -->
+    {% if total_pages > 1 %}
+    <div class="px-6 py-4 border-t border-gray-700">
+        {{ pagination(current_page, total_pages, pagination_base_url, "backlinks-table", owner_id=selected_owner.id if selected_owner else None) }}
+    </div>
+    {% endif %}
+    
+    <div class="overflow-x-auto overflow-y-auto">
+        <table class="w-full table">
+            <thead class="bg-gray-800 sticky top-0">
+                <tr>
+                    <!-- Source -->
+                    <th class="px-6 py-4 w-[18%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Source
+                    </th>
+
+                    <!-- Ancre -->
+                    <th class="px-6 py-4 w-[15%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Ancre
+                    </th>
+
+                    <!-- Labels -->
+                    <th class="px-6 py-4 w-[15%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Labels
+                    </th>
+
+                    <!-- Métriques -->
+                    <th class="px-6 py-4 w-[10%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Métriques
+                    </th>
+
+                    <!-- Informations SEO -->
+                    <th class="px-6 py-4 w-[10%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Informations SEO
+                    </th>
+
+                    <!-- Dates -->
+                    <th class="px-6 py-4 w-[10%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Dates
+                    </th>
+
+                    <!-- Actions -->
+                    <th class="px-6 py-4 w-[8%] text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Actions
+                    </th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">
+                {% for backlink in backlinks %}
+                    {% include "backlinks/_row.html" %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+</div>
+
+<!-- Résultats vides -->
+{% if not backlinks %}
+<div class="bg-gray-900 rounded-2xl shadow-lg p-12 text-center">
+    <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <h3 class="text-xl font-semibold text-white mb-2">Aucun backlink trouvé</h3>
+    <p class="text-gray-400 mb-6">Essayez de rajouter ou d'importer des backlinks.</p>
+
+    <!--
+    <button onclick="document.querySelector('form').reset(); htmx.trigger(document.querySelector('form'), 'submit')" 
+            class="btn-primary">
+        Réinitialiser les filtres
+    </button>
+    -->
+</div>
+{% endif %}

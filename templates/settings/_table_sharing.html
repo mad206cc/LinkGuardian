@@ -1,0 +1,150 @@
+<!-- Onglet Partage -->
+<div x-show="activeTab === 'sharing'" class="space-y-6">
+    <h2 class="text-2xl font-bold text-white mb-4">
+        Gestion des partages
+        {{ note_lecture(
+            "Les partages permettent à un utilisateur d'accéder aux données d'un autre utilisateur. Cependant en tant qu'administrateur principale, vous pouvez éditer ou supprimer n'importe quel partage.
+            En tant qu'administrateur standard, vous pouvez gérer les partages impliquant des utilisateurs simples. Les utilisateurs simples peuvent uniquement gérer les partages qu'ils ont créés vers d'autres utilisateurs simples, et seulement aux utilisateurs simples !",
+        )}}
+    </h2>
+
+    <!-- Formulaire d’ajout d’un nouveau partage -->
+    <div class="mt-6 bg-gray-900 p-6 rounded-2xl shadow-lg">
+        <h3 class="text-white font-semibold mb-4">Ajouter un partage</h3>
+
+        <form method="POST"
+            action="{{ url_for('config_routes.add_share') }}"
+            x-data="{ owner: '', grantee: '' }"
+            @submit.prevent="
+                if (owner === grantee) {
+                    alert('⚠️ Le propriétaire et le bénéficiaire doivent être différents.');
+                } else { $el.submit(); }
+            "
+            class="flex flex-col md:flex-row gap-4 items-center">
+
+            {% if current_user.role in ["admin", "main_admin"] %}
+                <!-- 🧭 Admin ou Super-Admin : peut choisir le propriétaire -->
+                <select name="owner_id"
+                        x-model="owner"
+                        required
+                        class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                    
+                    <option value="">Propriétaire des données…</option>
+
+                    {% if current_user.role == "main_admin" %}
+                        {# 👑 Super-admin : voit tout le monde #}
+                        {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.first_name }} {{ user.last_name }}</option>
+                        {% endfor %}
+                    
+                    {% elif current_user.role == "admin" %}
+                        {# 🔒 Admin normal : ne voit que les utilisateurs simples #}
+                        {% for user in users %}
+                            {% if user.role == "user" %}
+                                <option value="{{ user.id }}">{{ user.first_name }} {{ user.last_name }}</option>
+                            {% endif %}
+                        {% endfor %}
+                    {% endif %}
+                </select>
+
+            {% else %}
+                {# 🔹 Utilisateur simple : propriétaire = lui-même #}
+                <input type="hidden" name="owner_id" value="{{ current_user.id }}">
+            {% endif %}
+
+            <!-- 👥 Sélection du bénéficiaire -->
+            <select name="grantee_id"
+                    x-model="grantee"
+                    required
+                    size="1"
+                    class="flex-1 max-h-[250px] overflow-y-auto bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary px-3 py-2 appearance-none cursor-pointer hover:border-gray-600 transition-all">
+                <option value="">Donner accès à…</option>
+
+                {% for user in users %}
+                    <option value="{{ user.id }}">
+                        {{ user.first_name }} {{ user.last_name }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit"
+                    class="px-4 py-2 bg-primary text-white font-semibold rounded-lg hover:bg-primary/90 transition-all">
+                Accorder l’accès
+            </button>
+        </form>
+    </div>
+
+    <!-- Tableau avec défilement -->
+    <div class="bg-gray-900 rounded-2xl overflow-hidden shadow-lg">
+        <!-- Conteneur scrollable -->
+        <div class="max-h-[450px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
+            <table class="w-full text-sm">
+                <thead class="bg-gray-800/70 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-6 py-4 text-left font-medium text-gray-400 uppercase tracking-wider">
+                            Propriétaire
+                        </th>
+                        <th class="px-6 py-4 text-left font-medium text-gray-400 uppercase tracking-wider">
+                            Bénéficiaire
+                        </th>
+                        <th class="px-6 py-4 text-left font-medium text-gray-400 uppercase tracking-wider">
+                            Accès depuis
+                        </th>
+                        <th class="px-6 py-4 text-right font-medium text-gray-400 uppercase tracking-wider">
+                            Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-800">
+                    {% for share in shares %}
+                    <tr class="hover:bg-gray-800/40 transition">
+                        <td class="px-6 py-4 text-gray-200 whitespace-nowrap">
+                            {{ share.owner.first_name }} {{ share.owner.last_name }}
+                        </td>
+                        <td class="px-6 py-4 text-gray-200 whitespace-nowrap">
+                            {{ share.grantee.first_name }} {{ share.grantee.last_name }}
+                        </td>
+                        <td class="px-6 py-4 text-gray-400 whitespace-nowrap">
+                            {{ share.created_at.strftime('%d/%m/%Y') }}
+                        </td>
+
+                        {% if (share.owner.role!="main_admin" or share.grantee.role!="main_admin" 
+                        or share.owner.id == current_user.id or share.grantee.id == current_user.id)
+                        and current_user.role in ["admin", "main_admin"] %}
+                            <td class="px-6 py-4 text-right">
+                                <form method="POST"
+                                    action="{{ url_for('config_routes.delete_share', share_id=share.id) }}"
+                                    onsubmit="return confirm('Supprimer ce partage ?')">
+                                    <button type="submit"
+                                            class="px-3 py-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-gray-800 transition-all">
+                                        Supprimer
+                                    </button>
+                                </form>
+                            </td>
+
+                        {% elif current_user.role in ["user"] and (share.owner.id == current_user.id 
+                        and share.grantee.role=='user')%}
+                            <td class="px-6 py-4 text-right">
+                                <form method="POST"
+                                    action="{{ url_for('config_routes.delete_share', share_id=share.id) }}"
+                                    onsubmit="return confirm('Supprimer ce partage ?')">
+                                    <button type="submit"
+                                            class="px-3 py-1.5 rounded-lg text-red-400 hover:text-red-300 hover:bg-gray-800 transition-all">
+                                        Supprimer
+                                    </button>
+                                </form>
+                            </td>
+                        {% endif %}
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-6 text-center text-gray-500">Aucun partage défini</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+</div>

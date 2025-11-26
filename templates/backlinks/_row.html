@@ -1,0 +1,215 @@
+{% from "_layout/components.html" import status_badge, quality_meter, pagination %}
+
+<tr class="hover:bg-gray-800/50 transition-colors" id="backlink-{{ backlink.id }}">
+                        <!-- Source -->
+                        <td class="px-6 py-4 w-[18%]">
+                            <div class="flex items-start space-x-3 overflow-hidden">
+                                <!-- Favicon -->
+                                <div class="w-8 h-8 bg-gray-700 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <img src="https://www.google.com/s2/favicons?domain={{ backlink.url }}" 
+                                        alt="{{ backlink.url }}" 
+                                        class="w-4 h-4"
+                                        onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                                    <svg class="w-4 h-4 text-gray-500 hidden" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4.083 9h1.946c.089-1.546.383-2.97.837-4.118A6.004 6.004 0 004.083 9zM10 2a8 8 0 100 16 8 8 0 000-16zm0 2c-.076 0-.232.032-.465.262-.238.234-.497.623-.737 1.182-.389.907-.673 2.142-.766 3.556h3.936c-.093-1.414-.377-2.649-.766-3.556-.24-.559-.499-.948-.737-1.182C10.232 4.032 10.076 4 10 4zm3.971 5c-.089-1.546-.383-2.97-.837-4.118A6.004 6.004 0 0115.917 9h-1.946zm-2.003 2H8.032c.093 1.414.377 2.649.766 3.556.24.559.499.948.737 1.182.233.23.389.262.465.262.076 0 .232-.032.465-.262.238-.234.497-.623.737-1.182.389-.907.673-2.142.766-3.556zm1.166 4.118c.454-1.148.748-2.572.837-4.118h1.946a6.004 6.004 0 01-2.783 4.118zm-6.268 0C6.412 13.97 6.118 12.546 6.03 11H4.083a6.004 6.004 0 002.783 4.118z" clip-rule="evenodd"/>
+                                    </svg>
+                                </div>
+                                
+                                <div class="min-w-0 flex-1 truncate">
+                                    <div class="font-medium text-white truncate">
+                                        <a href="{{ backlink.url }}" target="_blank" 
+                                        title="{{ backlink.url }}">
+                                            URL : {{ backlink.url.split('/')[2] if '/' in backlink.url else backlink.url }}
+                                        </a>
+                                    </div>
+                                    <div class="text-sm text-gray-400 truncate" title="{{ backlink.url }}">
+                                        <a href="{{ backlink.link_to_check }}" target="_blank"
+                                        title="{{ backlink.link_to_check }}">
+                                        → Lien à vérifier : {{ backlink.link_to_check|replace('https://', '')|replace('http://', '')|truncate(30) }}
+                                        </a>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-1 text-xs">  
+                                        Présence du lien : {{ status_badge("✅ Présent" if backlink.link_status == 'Lien présent' else "🚫 Non présent") }}
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-1 text-xs">  
+                                        Indexé par Google : {{ status_badge("✅ Indexé" if backlink.google_index_status == 'Indexé !' else "🚫 Non indexé") }}
+                                    </div>
+
+                                </div>
+                            </div>
+                        </td>
+                                                
+                        <!-- Ancre -->
+                        <td class="px-6 py-4 w-[15%]">
+                            <div class="space-y-2">
+                                <div class="font-medium text-white break-words whitespace-normal max-w-xs">
+                                    "{{ backlink.anchor_text }}"
+                                </div>
+                            </div>
+
+                            <div class="flex flex-wrap gap-1 text-xs">  
+                                Présence de l'ancre : {{ status_badge("✅ Présent" if backlink.anchor_status == 'Ancre présente' else "🚫 Non présente") }}
+                            </div>
+                        </td>
+
+                        <!-- Labels -->
+                        <td class="px-6 py-4 w-[15%]">
+                            <div class="space-y-2">
+
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-gray-400 text-sm">Tag :</span>
+                                    <span class="px-2 py-1 text-xs font-semibold text-primary border border-primary/40 bg-primary/10 rounded-lg">
+                                        {{ backlink.tag }}
+                                    </span>
+                                </div>
+
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="text-gray-400 text-sm whitespace-nowrap">Plateforme source :</span>
+                                    <span class="px-2 py-1 text-xs font-semibold text-blue-400 border border-blue-400/40 bg-blue-500/10 rounded-lg whitespace-nowrap">
+                                        {{ backlink.source_plateforme }}
+                                    </span>
+                                </div>
+
+                            </div>
+                        </td>
+
+                        
+                        <!-- Métriques -->
+                        <td class="px-6 py-4 w-[10%]">
+                            <div class="space-y-4">
+                                <div class="flex items-center space-x-4 text-sm">
+                                    <div>
+                                        <span class="text-gray-400">PV:</span>
+                                        <span class="text-primary font-medium">{{ backlink.page_value }}</span>
+                                    </div>
+                                    <div class="flex items-center space-x-4 text-sm">
+                                        <span class="text-gray-400">Bas:</span>
+                                        <span class="text-primary font-medium">{{ backlink.bas }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4 text-sm">
+                                    <div>
+                                        <span class="text-gray-400">PT:</span>
+                                        <span class="text-accent font-medium">{{ backlink.page_trust }}</span>
+                                    </div>
+
+
+
+                                    <div class="flex items-center space-x-4 text-sm">
+                                        <span class="text-gray-400">Qualité:</span>
+                                        <span class="text-primary font-medium">{{ backlink.quality }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+
+                        <!-- Informations SEO -->
+                        <td class="px-6 py-4 w-[10%]">
+                            <div class="space-y-2">
+                                <div class="flex items-center space-x-4 text-sm">
+                                    <div class="flex flex-wrap gap-1">
+                                        Nature du lien : {{ status_badge("✅ Follow" if backlink.link_follow_status == 'follow' else "🚫 Nofollow") }}
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4 text-sm">
+                                    <div class="flex flex-wrap gap-1">  
+                                        Statut HTTP : {{ status_badge(backlink.status_code|string) }}
+                                    </div>
+                                </div>
+                                
+                            </div>                              
+                        </td>
+
+                        <!-- Dates et details -->
+                        <td class="px-6 py-4 w-[10%]">
+                            <div class="text-sm space-y-1">
+                                <!--
+                                <div>
+                                    <span class="text-gray-400">Détecté:</span>
+                                    <div class="text-white">
+                                        {% if backlink.first_checked %}
+                                            {{ backlink.first_checked.strftime('%d/%m/%Y') }}
+                                        {% else %}
+                                            —
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                -->
+                                <div>
+                                    <span class="text-gray-400">Vérifié:</span>
+                                    <div class="text-gray-300">
+                                        {{ backlink.last_checked.strftime('%d/%m/%Y %H:%M') if backlink.last_checked else '—' }}
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <span class="text-gray-400">Auteur :</span>
+                                    <div class="text-gray-300">
+                                        {{ backlink.added_by }}
+                                    </div>
+                                </div>
+
+                            </div>
+                        </td>
+                        
+                        <!-- Actions -->
+                        <td class="px-6 py-4 text-right w-[8%]">
+
+                            <div class="flex items-center justify-end space-x-2">
+
+                                {% if not selected_owner %}
+                                <!-- Bouton : Vérifier le statut -->
+                                <button 
+                                    hx-get="/check_status/{{ backlink.id }}" 
+                                    hx-target="#backlink-{{ backlink.id }}"
+                                    hx-swap="outerHTML"
+                                    class="relative group flex items-center justify-center bg-gray-800 hover:bg-emerald-600 text-white p-2 rounded-full shadow-md transition-all"
+                                    title="Vérifier le statut du site">
+
+                                    <svg xmlns="http://www.w3.org/2000/svg" 
+                                        class="w-4 h-4" 
+                                        fill="none" 
+                                        viewBox="0 0 24 24" 
+                                        stroke="currentColor" 
+                                        stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" 
+                                            d="M3 3v6h6M21 21v-6h-6M3 21v-6h6M21 3v6h-6M12 12l3-3m0 0l3 3m-3-3v6" />
+                                    </svg>
+
+                                    <span class="absolute bottom-[-2rem] bg-gray-900 text-xs text-white rounded px-2 py-1 opacity-0 group-hover:opacity-100 transition">
+                                        Vérifier
+                                    </span>
+                                </button>
+                                {% endif %}
+
+                                <!-- Ouvrir -->
+                                <a href="{{ backlink.url }}" 
+                                target="_blank" 
+                                class="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800"
+                                title="Ouvrir la page source">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                    </svg>
+                                </a>
+                            
+                                <!-- Supprimer -->
+                                {% if not selected_owner %}
+                                    <button 
+                                        hx-post="/delete_site/{{ backlink.id }}"
+                                        hx-target="#backlink-{{ backlink.id }}"
+                                        hx-swap="outerHTML swap:0.5s"
+                                        class="text-danger hover:text-red-400 transition-colors p-2 rounded-lg hover:bg-gray-800"
+                                        title="Supprimer le site">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                                                d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                {% endif %}
+                                
+                            </div>
+                            
+                        </td>
+                    </tr>

@@ -1,0 +1,159 @@
+{% extends "_layout/base.html" %}
+{% from "_layout/components.html" import pagination , note_lecture%}
+
+{% block content %}
+<div class="space-y-8">
+
+    <h1 class="text-3xl font-bold text-white mb-6">📂 Données partagées</h1>
+
+    <!-- Sélecteur d'utilisateur -->
+    <form method="GET" action="{{ url_for('sites_routes.shared_data') }}" class="flex flex-col md:flex-row gap-4">
+        <select name="owner_id"
+                class="flex-1 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary">
+            <option value="">Sélectionnez un utilisateur...</option>
+            {% for share in shared_with_me %}
+                <option value="{{ share.owner.id }}"
+                        {% if selected_owner and share.owner.id == selected_owner.id %}selected{% endif %}>
+                    {{ share.owner.first_name }} {{ share.owner.last_name }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="submit"
+                class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/80 transition-all">
+            Voir les données
+        </button>
+    </form>
+
+    {% if selected_owner %}
+        <div class="mt-8">
+
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-semibold text-white">
+                    Données partagées par {{ selected_owner.first_name }} {{ selected_owner.last_name }}
+                </h2>
+
+                <a href="{{ url_for('sites_routes.export_data', user_id=selected_owner.id) }}"
+                    class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-500 transition-all">
+                    Exporter les données
+                </a>
+            </div>
+
+            <!-- ✅ SECTION STATISTIQUES -->
+            {% if stats and stats.total > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-4 mb-6">
+                <!-- Total Backlinks -->
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="text-gray-400 text-sm mb-1">Total Backlinks</div>
+                    <div class="text-2xl font-bold text-white">{{ stats.total }}</div>
+                </div>
+
+                <!-- Qualité Moyenne -->
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="text-gray-400 text-sm mb-1">Qualité Moyenne</div>
+                    <div class="text-2xl font-bold text-primary">{{ stats.avg_quality }}</div>
+                </div>
+
+                <!-- Page Value -->
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="text-gray-400 text-sm mb-1">Page Value Moyen</div>
+                    <div class="text-2xl font-bold text-blue-400">{{ stats.avg_value }}</div>
+                </div>
+
+                <!-- Page Trust -->
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="text-gray-400 text-sm mb-1">Page Trust Moyen</div>
+                    <div class="text-2xl font-bold text-green-400">{{ stats.avg_trust }}</div>
+                </div>
+
+                <!-- Follow % -->
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="text-gray-400 text-sm mb-1">Liens Follow</div>
+                    <div class="text-2xl font-bold text-white">{{ stats.follow }} <span class="text-sm text-gray-400">({{ stats.follow_percentage }}%)</span></div>
+                </div>
+
+                <!-- Indexé % -->
+                <div class="bg-gray-800 rounded-lg p-4">
+                    <div class="text-gray-400 text-sm mb-1">Liens Indexés</div>
+                    <div class="text-2xl font-bold text-white">{{ stats.indexed }} <span class="text-sm text-gray-400">({{ stats.indexed_percentage }}%)</span></div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- 🔍 Barre de filtres pour les backlinks partagés -->
+            <form
+                hx-get="/shared_data/table"
+                hx-target="#backlinks-table"
+                hx-swap="outerHTML"
+                hx-include="this"
+                class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-900 p-4 rounded-xl mb-6"
+                hx-trigger="change"
+            >
+
+                <!-- Recherche -->
+                <div class="md:col-span-1">
+                    <label class="text-gray-400 text-sm mb-1">Recherche</label>
+                    <input type="text" name="q" value="{{ filters.q }}"
+                        placeholder="URL, ancre..."
+                        class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+                </div>
+
+                <!-- Tag -->
+                <div>
+                    <label class="text-gray-400 text-sm mb-1">Tag</label>
+                    <select name="tag" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+                        <option value="">Tous</option>
+                        {% for t in tags %}
+                            <option value="{{ t.valeur }}"
+                                    {% if filters.tag == t.valeur %}selected{% endif %}>
+                                {{ t.valeur }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Source -->
+                <div>
+                    <label class="text-gray-400 text-sm mb-1">Source</label>
+                    <select name="source" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+                        <option value="">Toutes</option>
+                        {% for s in sources %}
+                            <option value="{{ s.nom }}"
+                                    {% if filters.source == s.nom %}selected{% endif %}>
+                                {{ s.nom }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Bouton -->
+                <div class="flex items-end justify-start">
+                    <button type="submit"
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-full flex items-center gap-2 shadow-md transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/>
+                        </svg>
+                        Valider
+                    </button>
+                    {{ note_lecture("Pour filtrer vos backlinks partagés, sélectionnez un tag, une source ou saisissez un mot-clé puis appuyez sur Valider.") }}
+                </div>
+
+                <!-- Owner ID obligatoire -->
+                <input type="hidden" name="owner_id" value="{{ selected_owner.id }}">
+
+            </form>
+
+            <!-- ✅ TABLEAU DES BACKLINKS -->
+            {% if backlinks %}
+                {% include "backlinks/_table.html" with context %}
+            {% else %}
+                <p class="text-gray-400 italic">Aucune donnée trouvée pour cet utilisateur.</p>
+            {% endif %}
+        </div>
+
+    {% else %}
+        <div class="text-gray-500 italic mt-4">Sélectionnez un utilisateur pour voir ses données.</div>
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -1,7 +1,6 @@
 # ===============================
 # 📦 Librairies & dépendances Flask
 # ===============================
-import os
 from asyncio import Semaphore
 
 from aiohttp import ClientTimeout
@@ -51,20 +50,8 @@ AIOHTTP_TIMEOUT = ClientTimeout(total=30)
 # 🚀 Création de l'application Flask
 # ===============================
 app = Flask(__name__)
-app.secret_key = os.getenv(
-    "SECRET_KEY", "dfsdfsdfdfsdfsdfsdfsdfsdfsdfsdffsd"
-)  # ⚠️ À changer !
-
-db_user = os.getenv("POSTGRES_USER")
-db_pass = os.getenv("POSTGRES_PASSWORD")
-db_host = os.getenv("DB_HOST", "postgres")
-db_port = os.getenv("DB_PORT", "5432")
-db_name = os.getenv("POSTGRES_DB")
-
-app.config["SQLALCHEMY_DATABASE_URI"] = (
-    f"postgresql+psycopg2://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
-)
-
+app.secret_key = "dfsdfsdfdfsdfsdfsdfsdfsdfsdfsdffsd"
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///site.db"
 
 # ===============================
 # 🧱 Initialisation des extensions
@@ -73,7 +60,6 @@ db.init_app(app)
 migrate = Migrate(app, db)
 login_manager.init_app(app)  # ⚠️ Obligatoire avant Admin
 executor = Executor(app)
-
 
 # ===============================
 # 🔐 Configuration Flask-Login
@@ -97,6 +83,11 @@ app.register_blueprint(backlinks_routes)
 app.register_blueprint(anchors_routes)
 app.register_blueprint(domains_routes)
 app.register_blueprint(tag_serv)
+
+print("\n=== ROUTES DISPONIBLES ===")
+for rule in app.url_map.iter_rules():
+    print(f"{rule.endpoint}: {rule.rule}")
+print("========================\n")
 
 
 # ===============================
@@ -153,16 +144,5 @@ def inject_global_stats():
 # ===============================
 # 🏁 Lancement de l'application
 # ===============================
-
-from celery_app import init_celery
-
-init_celery(app)
-
 if __name__ == "__main__":
-    # Mode développement avec rechargement automatique
-    app.run(
-        host="0.0.0.0",
-        port=5000,
-        debug=True,
-        use_reloader=True,  # ⬅️ Active le rechargement
-    )
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)

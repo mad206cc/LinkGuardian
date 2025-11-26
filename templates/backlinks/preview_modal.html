@@ -1,0 +1,161 @@
+{% from "_layout/components.html" import modal_header, status_badge, quality_meter %}
+
+<!-- Modal Preview Backlink - Contenu HTMX -->
+{{ modal_header("Contexte du backlink - " + backlink.domain) }}
+
+<div class="p-6 space-y-6">
+    <!-- Informations du backlink -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Détails techniques -->
+        <div class="space-y-4">
+            <h4 class="text-lg font-semibold text-white">Détails techniques</h4>
+            
+            <div class="bg-gray-800/50 rounded-xl p-4 space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Domaine source:</span>
+                    <span class="text-white font-medium">{{ backlink.domain }}</span>
+                </div>
+                
+                <div class="flex justify-between">
+                    <span class="text-gray-400">URL source:</span>
+                    <a href="{{ backlink.source_url }}" target="_blank" 
+                       class="text-primary hover:text-primary/80 truncate max-w-xs">
+                        {{ backlink.source_url|truncate(50) }}
+                    </a>
+                </div>
+                
+                <div class="flex justify-between">
+                    <span class="text-gray-400">URL cible:</span>
+                    <span class="text-gray-300 truncate max-w-xs">{{ backlink.target_url|truncate(50) }}</span>
+                </div>
+                
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Statut HTTP:</span>
+                    {{ status_badge("http_" + backlink.status_http|string) }}
+                </div>
+                
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Type de lien:</span>
+                    {{ status_badge("follow" if backlink.follow else "nofollow") }}
+                </div>
+                
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Indexation Google:</span>
+                    {{ status_badge("indexed" if backlink.indexed_google else "not_indexed") }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Métriques de qualité -->
+        <div class="space-y-4">
+            <h4 class="text-lg font-semibold text-white">Métriques de qualité</h4>
+            
+            <div class="bg-gray-800/50 rounded-xl p-4 space-y-4">
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-primary">{{ backlink.page_value }}</div>
+                        <div class="text-sm text-gray-400">Page Value</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-2xl font-bold text-accent">{{ backlink.page_trust }}</div>
+                        <div class="text-sm text-gray-400">Page Trust</div>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-gray-700">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-gray-400">Première détection:</span>
+                        <span class="text-white">{{ backlink.first_checked.strftime('%d/%m/%Y à %H:%M') }}</span>
+                    </div>
+                    <div class="flex justify-between text-sm mt-2">
+                        <span class="text-gray-400">Dernière vérification:</span>
+                        <span class="text-white">{{ backlink.last_checked.strftime('%d/%m/%Y à %H:%M') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Ancre et contexte -->
+    <div class="space-y-4">
+        <h4 class="text-lg font-semibold text-white">Ancre et contexte</h4>
+        
+        <div class="bg-gray-800/50 rounded-xl p-4">
+            <div class="mb-3">
+                <span class="text-gray-400">Texte d'ancrage:</span>
+                <div class="mt-1 p-3 bg-gray-700/50 rounded-lg">
+                    <span class="text-white font-medium">"{{ backlink.anchor_text }}"</span>
+                </div>
+            </div>
+            
+            {% if context %}
+            <div>
+                <span class="text-gray-400">Contexte du paragraphe:</span>
+                <div class="mt-2 p-4 bg-gray-700/50 rounded-lg text-gray-300 leading-relaxed">
+                    {{ context.before_text }}
+                    <mark class="bg-primary/30 text-primary px-1 rounded">{{ backlink.anchor_text }}</mark>
+                    {{ context.after_text }}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Analyse du domaine source -->
+    <div class="space-y-4">
+        <h4 class="text-lg font-semibold text-white">Analyse du domaine source</h4>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-gray-800/50 rounded-xl p-4 text-center">
+                <div class="text-xl font-bold text-primary">{{ domain_stats.total_backlinks }}</div>
+                <div class="text-sm text-gray-400">Backlinks de ce domaine</div>
+            </div>
+            
+            <div class="bg-gray-800/50 rounded-xl p-4 text-center">
+                <div class="text-xl font-bold text-accent">{{ domain_stats.avg_quality }}</div>
+                <div class="text-sm text-gray-400">Qualité moyenne</div>
+            </div>
+            
+            <div class="bg-gray-800/50 rounded-xl p-4 text-center">
+                <div class="text-xl font-bold text-warn">{{ domain_stats.first_link_date }}</div>
+                <div class="text-sm text-gray-400">Premier lien détecté</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Actions rapides -->
+    <div class="flex items-center justify-between pt-4 border-t border-gray-700">
+        <div class="flex items-center space-x-4">
+            <button class="btn-secondary">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+                Ajouter aux favoris
+            </button>
+            
+            <button class="btn-secondary">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                Surveiller ce domaine
+            </button>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+            <a href="{{ backlink.source_url }}" 
+               target="_blank" 
+               class="btn-primary">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                </svg>
+                Ouvrir la page
+            </a>
+            
+            <button onclick="document.getElementById('preview-modal').classList.add('hidden')" 
+                    class="btn-secondary">
+                Fermer
+            </button>
+        </div>
+    </div>
+</div>

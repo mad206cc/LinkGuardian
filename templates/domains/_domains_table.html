@@ -1,0 +1,132 @@
+{% from "_layout/components.html" import status_badge, quality_meter, pagination %}
+
+<!-- Table des domaines - Partial HTMX -->
+<div id="domains-table" class="bg-gray-900 rounded-2xl shadow-lg overflow-hidden">
+
+    <!-- Pagination en haut -->
+    {% if total_pages > 1 %}
+    <div class="px-6 py-4 border-b border-gray-700">
+        {{ pagination(current_page, total_pages, pagination_base_url, "domains-table") }}
+    </div>
+    {% endif %}
+    
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-800">
+                <tr>
+                    <th class="px-6 py-4 w-[30%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Domaine</th>
+                    <th class="px-6 py-4 w-[15%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Backlinks</th>
+                    <th class="px-6 py-4 w-[20%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Qualité</th>
+                    <th class="px-6 py-4 w-[20%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Métriques</th>
+                    <th class="px-6 py-4 w-[10%] text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Premier lien</th>
+                    <th class="px-6 py-4 w-[5%] text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Actions</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">
+                {% for domain in domains %}
+                <tr class="hover:bg-gray-800/50 transition-colors">
+
+                    <!-- Domaine -->
+                    <td class="px-6 py-4 w-[30%]">
+                        <div class="flex items-center space-x-3">
+                            <img src="https://www.google.com/s2/favicons?domain={{ domain.name }}" 
+                                alt="{{ domain.name }}" 
+                                class="w-6 h-6 rounded">
+
+                            <div class="whitespace-normal break-all">   {# ← permet les retours à la ligne #}
+                                <a href="https://{{ domain.name }}" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="font-medium text-white hover:text-accent transition-colors duration-200">
+                                    {{ domain.name }}
+                                </a>
+                            </div>
+                        </div>
+                    </td>
+                        
+                    <!-- Backlinks -->
+                    <td class="px-6 py-4 w-[15%]">
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xl font-bold text-primary">{{ domain.backlinks_count }}</span>
+                            {% if domain.backlinks_change > 0 %}
+                            <span class="text-xs text-accent">+{{ domain.backlinks_change }}</span>
+                            {% elif domain.backlinks_change < 0 %}
+                            <span class="text-xs text-danger">{{ domain.backlinks_change }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-sm text-gray-400">
+                            {{ domain.follow_count }} follow / {{ domain.nofollow_count }} nofollow
+                        </div>
+                    </td>
+                    
+                    <!-- Qualité -->
+                    <td class="px-6 py-4 w-[20%]">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 rounded-full flex items-center justify-center text-sm font-bold
+                                {% if domain.avg_quality >= 40 %}bg-accent/20 text-accent
+                                {% elif domain.avg_quality >= 25 %}bg-primary/20 text-primary
+                                {% elif domain.avg_quality >= 15 %}bg-warn/20 text-warn
+                                {% else %}bg-danger/20 text-danger{% endif %}">
+                                {{ "%.1f"|format(domain.avg_quality) }}
+                            </div>
+                            
+                            <div class="w-24">
+                                {{ quality_meter(domain.avg_quality) }}
+                            </div>
+                        </div>
+                    </td>
+                    
+                    <!-- Métriques -->
+                    <td class="px-6 py-4 w-[20%]">
+                        <div class="min-w-[110px] max-w-[110px] space-y-1 text-sm">
+                            
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">PV moyen :</span>
+                                <span class="text-primary font-medium ml-auto">{{ domain.avg_page_value }}</span>
+                            </div>
+
+                            <div class="flex items-center gap-2">
+                                <span class="text-gray-400">PT moyen :</span>
+                                <span class="text-accent font-medium ml-auto">{{ domain.avg_page_trust }}</span>
+                            </div>
+
+                        </div>
+                    </td>
+                    
+                    <!-- Premier lien -->
+                    <td class="px-6 py-4 w-[10%]">
+                        <div class="text-sm text-white">{{ domain.first_link_date.strftime('%d/%m/%Y') }}</div>
+                        <div class="text-xs text-gray-400">Il y a {{ domain.days_since_first }} jours</div>
+                    </td>
+                    
+                    <!-- Actions -->
+                    <td class="px-6 py-4 w-[5%] text-right">
+                        <div class="flex items-center justify-end space-x-2">
+                            <a href="https://{{ domain.name }}" 
+                                target="_blank" 
+                                class="text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-800"
+                                title="Visiter le domaine">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/>
+                                </svg>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+</div>
+
+<!-- Résultats vides -->
+{% if not domains %}
+<div class="bg-gray-900 rounded-2xl shadow-lg p-12 text-center">
+    <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+    </svg>
+    <h3 class="text-xl font-semibold text-white mb-2">Aucun domaine trouvé</h3>
+    <p class="text-gray-400 mb-6">Ajoutez des backlinks pour voir vos domaines référents.</p>
+</div>
+{% endif %}

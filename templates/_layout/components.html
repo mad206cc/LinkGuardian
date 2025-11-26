@@ -1,0 +1,514 @@
+<!-- Macro pour les cartes KPI -->
+{% macro kpi_card(title, value, change=None, change_type='neutral', icon=None, subtitle=None, note_lecture=None) %}
+<div class="bg-gray-900 rounded-2xl shadow-lg p-6 card-hover transition-all">
+    <div class="flex items-start justify-between">
+        <div class="flex-1">
+            <div class="flex items-center space-x-2 mb-2">
+                {% if icon %}
+                <div class="w-8 h-8 bg-primary/20 rounded-lg flex items-center justify-center">
+                    {{ icon|safe }}
+                </div>
+                {% endif %}
+                <h3 class="text-sm font-medium text-gray-400">{{ title }}</h3>
+                
+                {% if note_lecture %}
+                <!-- Icône info pour la note de lecture -->
+                <div class="relative group inline-block">
+                    <div class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 group-hover:bg-blue-500/30 transition-all cursor-help">
+                        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                        </svg>
+                    </div>
+                    <!-- Note de lecture qui apparaît au survol -->
+                    <div class="absolute z-50 mt-2 p-3 bg-gray-800 border border-blue-500/30 rounded-lg shadow-xl text-xs text-gray-300 text-justify max-w-[90vw] sm:min-w-[200px] transition-all duration-200 left-1/2 -translate-x-2/3 top-full invisible group-hover:visible opacity-0 group-hover:opacity-100">
+                        {{ note_lecture }}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="text-2xl font-bold text-white mb-1">{{ value }}</div>
+            
+            {% if subtitle %}
+            <p class="text-xs text-gray-500">{{ subtitle }}</p>
+            {% endif %}
+        </div>
+        
+        {% if change %}
+        <div class="flex items-center space-x-1 text-sm">
+            {% if change_type == 'positive' %}
+                <svg class="w-4 h-4 text-accent" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L11 7.414V15a1 1 0 11-2 0V7.414L6.707 9.707a1 1 0 01-1.414 0z" clip-rule="evenodd"/>
+                </svg>
+                <span class="text-accent font-medium">+{{ change }}</span>
+            {% elif change_type == 'negative' %}
+                <svg class="w-4 h-4 text-danger" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L9 12.586V5a1 1 0 012 0v7.586l2.293-2.293a1 1 0 011.414 0z" clip-rule="evenodd"/>
+                </svg>
+                <span class="text-danger font-medium">{{ change }}</span>
+            {% else %}
+                <span class="text-gray-400">{{ change }}</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+{% macro note_lecture(title) %}
+<div class="relative group inline-block ml-2 align-middle">
+    
+    <!-- Icône info -->
+    <div class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 group-hover:bg-blue-500/30 transition-all cursor-help">
+        <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+            clip-rule="evenodd"/>
+        </svg>
+    </div>
+
+    <!-- Info-bulle -->
+    <div class="absolute z-50 mt-2 p-3 bg-gray-800 border border-blue-500/30 rounded-lg shadow-xl 
+                text-sm text-gray-300 font-normal max-w-[90vw] sm:min-w-[220px] text-justify
+                transition-all duration-200 left-1/2 -translate-x-1/2 top-full
+                opacity-0 invisible group-hover:opacity-100 group-hover:visible">
+        {{ title }}
+    </div>
+
+</div>
+{% endmacro %}
+
+<!-- Macro pour les badges de statut -->
+{% macro status_badge(status, text=None) %}
+{% set badge_text = text or status %}
+{% if status == 'follow' %}
+    <span class="badge badge-success">{{ badge_text }}</span>
+{% elif status == 'nofollow' %}
+    <span class="badge badge-warning">{{ badge_text }}</span>
+{% elif status == 'indexed' %}
+    <span class="badge badge-success">Indexé</span>
+{% elif status == 'not_indexed' %}
+    <span class="badge badge-danger">Non indexé</span>
+{% elif status == 'http_200' %}
+    <span class="badge badge-success">200</span>
+{% elif status == 'http_301' or status == 'http_302' %}
+    <span class="badge badge-warning">{{ status.split('_')[1] }}</span>
+{% elif status == 'http_404' %}
+    <span class="badge badge-danger">404</span>
+{% elif status == 'http_500' %}
+    <span class="badge badge-danger">500</span>
+{% elif status == 'over_optimized' %}
+    <span class="badge badge-danger">Sur-optimisé</span>
+{% elif status == 'high_quality' %}
+    <span class="badge badge-success">Haute qualité</span>
+{% elif status == 'medium_quality' %}
+    <span class="badge badge-warning">Qualité moyenne</span>
+{% elif status == 'low_quality' %}
+    <span class="badge badge-danger">Faible qualité</span>
+{% else %}
+    <span class="badge badge-info">{{ badge_text }}</span>
+{% endif %}
+{% endmacro %}
+
+<!-- Macro pour les cartes de contenu -->
+{% macro content_card(title, content=None, footer=None, class="") %}
+<div class="bg-gray-900 rounded-2xl shadow-lg p-6 {{ class }}">
+    {% if title %}
+    <h3 class="text-lg font-semibold text-white mb-4">{{ title }}</h3>
+    {% endif %}
+    
+    {% if content %}
+    <div class="text-gray-300">
+        {{ content|safe }}
+    </div>
+    {% endif %}
+    
+    {% if caller %}
+    {{ caller() }}
+    {% endif %}
+    
+    {% if footer %}
+    <div class="mt-4 pt-4 border-t border-gray-700 text-sm text-gray-400">
+        {{ footer|safe }}
+    </div>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<!-- Macro pour les tables responsives -->
+{% macro data_table(headers, rows, actions=True, class="") %}
+<div class="bg-gray-900 rounded-2xl shadow-lg overflow-hidden {{ class }}">
+    <div class="overflow-x-auto">
+        <table class="w-full">
+            <thead class="bg-gray-800 sticky top-0">
+                <tr>
+                    {% for header in headers %}
+                    <th class="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        {{ header }}
+                    </th>
+                    {% endfor %}
+                    {% if actions %}
+                    <th class="px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
+                        Actions
+                    </th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-700">
+                {% for row in rows %}
+                <tr class="hover:bg-gray-800/50 transition-colors">
+                    {% for cell in row %}
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {{ cell|safe }}
+                    </td>
+                    {% endfor %}
+                    {% if actions %}
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        {% if caller %}
+                        {{ caller(loop.index0) }}
+                        {% else %}
+                        <button class="text-primary hover:text-primary/80 mr-3">Voir</button>
+                        <button class="text-gray-400 hover:text-white">Éditer</button>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro pagination(current_page, total_pages, base_url, target_id, owner_id=None, public_url=None) %}
+<div class="flex items-center justify-between">
+    <div class="text-sm text-gray-400">
+        Page {{ current_page }} sur {{ total_pages }}
+    </div>
+
+    <div class="flex items-center space-x-2">
+        {% set sep = '&' if '?' in base_url else '?' %}
+
+        {# === BOUTON PRÉCÉDENT FIXE === #}
+        {% if current_page > 1 %}
+            <button 
+                hx-get="{{ base_url }}{{ sep }}page={{ current_page-1 }}{% if owner_id %}&owner_id={{ owner_id }}{% endif %}"
+                hx-target="#{{ target_id }}" 
+                hx-swap="outerHTML"
+                hx-push-url="{{ (public_url or base_url) }}{{ sep }}page={{ current_page-1 }}{% if owner_id %}&owner_id={{ owner_id }}{% endif %}"
+                class="px-3 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors
+                       w-[110px] text-center">
+                Précédent
+            </button>
+        {% else %}
+            <span class="px-3 py-2 text-sm bg-gray-800 text-gray-600 rounded-lg cursor-not-allowed
+                         w-[110px] text-center">
+                Précédent
+            </span>
+        {% endif %}
+
+        {# === NUMÉROS FIXES (5 MAX) === #}
+        <div class="flex items-center space-x-1">
+
+            {% set window = 5 %}
+            {% set half = window // 2 %}
+
+            {# Position idéale #}
+            {% set start = current_page - half %}
+            {% set end = current_page + half %}
+
+            {# Ajustement au début #}
+            {% if start < 1 %}
+                {% set end = end + (1 - start) %}
+                {% set start = 1 %}
+            {% endif %}
+
+            {# Ajustement à la fin #}
+            {% if end > total_pages %}
+                {% set start = start - (end - total_pages) %}
+                {% set end = total_pages %}
+                {% if start < 1 %}
+                    {% set start = 1 %}
+                {% endif %}
+            {% endif %}
+
+            {# Toujours max 5 numéros #}
+            {% if end - start + 1 > window %}
+                {% set end = start + window - 1 %}
+            {% endif %}
+
+            {% for p in range(start, end + 1) %}
+
+                {% if p == current_page %}
+                    <span class="px-3 py-2 text-sm font-bold bg-primary text-white rounded-lg
+                                 w-[48px] text-center">
+                        {{ p }}
+                    </span>
+
+                {% else %}
+                    <button 
+                        hx-get="{{ base_url }}{{ sep }}page={{ p }}{% if owner_id %}&owner_id={{ owner_id }}{% endif %}"
+                        hx-target="#{{ target_id }}"
+                        hx-swap="outerHTML"
+                        hx-push-url="{{ (public_url or base_url) }}{{ sep }}page={{ p }}{% if owner_id %}&owner_id={{ owner_id }}{% endif %}"
+                        class="px-3 py-2 text-sm font-medium bg-gray-700 text-white hover:bg-gray-600 rounded-lg 
+                               transition-colors w-[48px] text-center">
+                        {{ p }}
+                    </button>
+                {% endif %}
+
+            {% endfor %}
+        </div>
+
+        {# === BOUTON SUIVANT FIXE === #}
+        {% if current_page < total_pages %}
+            <button 
+                hx-get="{{ base_url }}{{ sep }}page={{ current_page+1 }}{% if owner_id %}&owner_id={{ owner_id }}{% endif %}"
+                hx-target="#{{ target_id }}" 
+                hx-swap="outerHTML"
+                hx-push-url="{{ (public_url or base_url) }}{{ sep }}page={{ current_page+1 }}{% if owner_id %}&owner_id={{ owner_id }}{% endif %}"
+                class="px-3 py-2 text-sm bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors
+                       w-[110px] text-center">
+                Suivant
+            </button>
+        {% else %}
+            <span class="px-3 py-2 text-sm bg-gray-800 text-gray-600 rounded-lg cursor-not-allowed
+                         w-[110px] text-center">
+                Suivant
+            </span>
+        {% endif %}
+
+    </div>
+</div>
+{% endmacro %}
+
+
+
+<!-- Macro pour les filtres -->
+
+{% macro filter_form(filters, action="/", method="GET") %}
+<form hx-get="{{ action }}" hx-target="#{{ target_id }}" hx-push-url="true" class="bg-gray-900 rounded-2xl shadow-lg p-6 mb-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        {% for filter in filters %}
+        <div>
+            <label class="block text-sm font-medium text-gray-400 mb-2">{{ filter.label }}</label>
+            {% if filter.type == 'text' %}
+            <input type="text" 
+                   name="{{ filter.name }}" 
+                   value="{{ filter.value or '' }}"
+                   placeholder="{{ filter.placeholder or '' }}"
+                   class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+            {% elif filter.type == 'select' %}
+            <select name="{{ filter.name }}" 
+                    class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                {% for option in filter.options %}
+                <option value="{{ option.value }}" {% if option.value == filter.value %}selected{% endif %}>
+                    {{ option.label }}
+                </option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="flex items-center justify-between">
+        <button type="submit" class="btn-primary">
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            Filtrer
+        </button>
+        
+        <button type="button" 
+                onclick="this.form.reset(); htmx.trigger(this.form, 'submit')"
+                class="btn-secondary">
+            Réinitialiser
+        </button>
+    </div>
+</form>
+{% endmacro %}
+
+
+<!-- Macro pour les graphiques Plotly -->
+{% macro plotly_chart(chart_id, title=None, height="400px") %}
+<div class="bg-gray-900 rounded-2xl shadow-lg p-6">
+    {% if title %}
+    <h3 class="text-lg font-semibold text-white mb-4">{{ title }}</h3>
+    {% endif %}
+    <div id="{{ chart_id }}" style="height: {{ height }};" class="plotly-chart"></div>
+</div>
+{% endmacro %}
+
+<!-- Macro pour les alertes/notifications -->
+{% macro alert(message, type="info", dismissible=True) %}
+<div class="alert alert-{{ type }} rounded-xl p-4 mb-4 flex items-center justify-between
+    {% if type == 'success' %}bg-accent/20 border border-accent/30 text-accent
+    {% elif type == 'warning' %}bg-warn/20 border border-warn/30 text-warn
+    {% elif type == 'error' %}bg-danger/20 border border-danger/30 text-danger
+    {% else %}bg-primary/20 border border-primary/30 text-primary{% endif %}">
+    
+    <div class="flex items-center space-x-3">
+        <svg class="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+            {% if type == 'success' %}
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+            {% elif type == 'warning' %}
+            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+            {% elif type == 'error' %}
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+            {% else %}
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+            {% endif %}
+        </svg>
+        <span>{{ message }}</span>
+    </div>
+    
+    {% if dismissible %}
+    <button onclick="this.parentElement.remove()" class="text-current hover:opacity-75">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+        </svg>
+    </button>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<!-- Macro pour ajouter un site avec gestion des tags -->
+{% macro add_site_form(action="/add_site", tags=[], sources=[]) %}
+<form hx-post="{{ action }}" 
+      hx-target="#backlinks-table" 
+      hx-swap="outerHTML" 
+      class="bg-gray-900 rounded-2xl shadow-lg p-6 mb-6">
+
+  <h2 class="text-xl font-semibold text-white mb-4">➕ Ajouter un nouveau site</h2>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <!-- Champ URL -->
+    <div>
+      <label class="block text-sm font-medium text-gray-400 mb-2">URL du site</label>
+      <input type="url" 
+             name="url" 
+             placeholder="https://example.com"
+             required
+             class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-primary">
+    </div>
+
+    <!-- Sélecteur de Tag -->
+    <div>
+      <label class="block text-sm font-medium text-gray-400 mb-2">Tag</label>
+      <div class="flex gap-2">
+        <select id="tag-select" name="tag" required
+                class="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary">
+          <option value="">-- Choisir un tag --</option>
+          {% for tag in tags %}
+          <option value="{{ tag.valeur }}">{{ tag.valeur }}</option>
+          {% endfor %}
+        </select>
+        <!-- Boutons d'ajout / suppression -->
+        <button type="button" onclick="promptNewTag()" 
+        class="bg-green-600 hover:bg-green-700 text-white px-3 rounded-lg" 
+        title="Ajouter une source">+</button>
+        <button type="button" onclick="promptDeleteTag()" 
+                class="bg-red-600 hover:bg-red-700 text-white px-3 rounded-lg" 
+                title="Supprimer une source">-</button>
+      </div>
+    </div>
+
+    <!-- Champ Lien à vérifier -->
+    <div>
+      <label class="block text-sm font-medium text-gray-400 mb-2">Lien à vérifier</label>
+      <input type="url" 
+             name="link_to_check" 
+             placeholder="https://votresite.com"
+             required
+             class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-primary">
+    </div>
+
+    <!-- Source/Plateforme -->
+    <div>
+        <label class="block text-sm font-medium text-gray-400 mb-2">Plateforme de soure</label>
+        <div class="flex space-x-2">
+            <select id="source-select" name="source_plateforme" 
+                    class="flex-1 bg-gray-800 text-white rounded-lg px-4 py-2 focus:ring-2 focus:ring-primary">
+                <option value="">-- Choisir une source --</option>
+                {% for source in sources %}
+                <option value="{{ source.nom }}">{{ source.nom }}</option>
+                {% endfor %}
+            </select>
+            <button type="button" onclick="promptNewSource()" 
+                    class="bg-green-600 hover:bg-green-700 text-white px-3 rounded-lg" 
+                    title="Ajouter une source">+</button>
+            <button type="button" onclick="promptDeleteSource()" 
+                    class="bg-red-600 hover:bg-red-700 text-white px-3 rounded-lg" 
+                    title="Supprimer une source">-</button>
+        </div>
+    </div>
+
+  </div>
+        <!-- Ligne contenant les deux éléments -->
+        <div class="flex items-end gap-4 mb-4">
+        
+        <!-- Champ Texte d'ancre (à gauche, prend tout l'espace dispo) -->
+        <div class="flex-1">
+            <label class="block text-sm font-medium text-gray-400 mb-2">Texte d'ancre</label>
+            <input type="text" 
+                name="anchor_text" 
+                placeholder="Ancre afficher du texte cliquable"
+                class="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:ring-2 focus:ring-primary">
+        </div>
+
+        <!-- Autre div à droite (largeur auto, ne prend que ce qu'il faut) -->
+        <div class="w-auto">
+            <label class="block text-sm font-medium text-gray-400 mb-2">Actions sur le site</label>
+            <div class="flex gap-2">
+
+                <!-- Bouton Ajouter -->
+                <button 
+                type="submit"
+                class="border border-gray-500 text-gray-300 hover:bg-gray-700/30 font-medium px-4 py-2 rounded-lg w-fit text-center transition-all"
+                title="Ajouter un site">
+                ➕ Ajouter
+                </button>
+                
+            </div>
+        </div>
+
+    </div>
+
+
+</form>
+{% endmacro %}
+
+<!-- Macro pour les modales -->
+{% macro modal_header(title, closable=True) %}
+<div class="flex items-center justify-between p-6 border-b border-gray-700">
+    <h2 class="text-xl font-semibold text-white">{{ title }}</h2>
+    {% if closable %}
+    <button onclick="document.getElementById('modal-container').classList.add('hidden')" 
+            class="text-gray-400 hover:text-white transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+        </svg>
+    </button>
+    {% endif %}
+</div>
+{% endmacro %}
+
+<!-- Macro pour les métriques de qualité -->
+{# Macro pour les métriques de qualité - Version simplifiée avec couleur neutre #}
+{% macro quality_meter(score, label="Score de qualité") %}
+    <div class="flex items-center space-x-3">
+        <div class="flex-1">
+            <div class="flex items-center justify-between text-sm mb-1">
+                <span class="text-gray-400">{{ label }}</span>
+                <span class="text-white font-medium">{{ "%.1f"|format(score) }}/100</span>
+            </div>
+            <div class="w-full bg-gray-700 rounded-full h-2">
+                <div class="h-2 rounded-full transition-all duration-300 bg-blue-500"
+                    style="width: {{ score }}%">
+                </div>
+            </div>
+        </div>
+
+    </div>
+{% endmacro %}
+

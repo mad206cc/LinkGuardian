@@ -1,0 +1,438 @@
+{% extends "_layout/base.html" %}
+{% from "_layout/components.html" import filter_form, data_table, pagination, status_badge, quality_meter, add_site_form, note_lecture %}
+
+
+{% block title %}Backlinks - LinkGuardian{% endblock %}
+
+{% block content %}
+
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Backlinks</h1>
+            <p class="text-gray-400 mt-1">Gérez et analysez votre profil de liens entrants</p>
+        </div>
+
+      <div class="flex flex-wrap gap-3 mt-4">
+
+          <!-- 📁 Import Excel -->
+          <form method="POST" action="{{ url_for('sites_routes.import_data') }}" enctype="multipart/form-data">
+              <label for="excel-file"
+                    class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium flex items-center space-x-2 cursor-pointer hover:bg-blue-500 transition-all">
+                  <span>📁</span>
+                  <span>Importer les données</span>
+              </label>
+              <input id="excel-file" type="file" name="file" accept=".xlsx,.xls" class="hidden" onchange="this.form.submit()">
+          </form>
+
+          <!-- 📤 Exporter CSV -->
+          <form method="GET" action="{{ url_for('sites_routes.export_data') }}" style="display: inline;">
+              <button type="submit"
+                      class="px-4 py-2 bg-green-600 text-white rounded-lg font-medium flex items-center space-x-2 hover:bg-green-500 transition-all">
+                  <span>📤</span>
+                  <span>Exporter les données</span>
+              </button>
+          </form>
+
+          <!-- 🔄 Actualiser -->
+          <button onclick="window.location.reload()"
+                  class="px-4 py-2 bg-gray-700 text-white rounded-lg font-medium flex items-center space-x-2 hover:bg-gray-600 transition-all">
+              <span>🔄</span>
+              <span>Actualiser</span>
+          </button>
+
+      </div>
+
+    </div>
+    
+    <!-- Statistiques rapides -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="bg-gray-900 rounded-xl p-4">
+            <div class="text-2xl font-bold text-white">{{ stats.total }}</div>
+            <div class="text-sm text-gray-400">Total backlinks</div>
+        </div>
+        <div class="bg-gray-900 rounded-xl p-4">
+            <div class="text-2xl font-bold text-accent">{{ stats.follow }}</div>
+            <div class="text-sm text-gray-400">Follow ({{ stats.follow_percentage }}%)</div>
+        </div>
+        <div class="bg-gray-900 rounded-xl p-4">
+            <div class="text-2xl font-bold text-primary">{{ stats.indexed }}</div>
+            <div class="text-sm text-gray-400">Indexés par Google ({{ stats.indexed_percentage }}%)</div>
+        </div>
+
+        <!-- Score moyen 
+        <div class="bg-gray-900 rounded-xl p-4">
+            <div class="text-2xl font-bold text-warn">{{ stats.avg_quality }}</div>
+            <div class="text-sm text-gray-400">Score moyen</div>
+        </div>
+        --> 
+
+    </div>
+ 
+    <!-- Formulaire d'ajout -->
+    <div id="add_site_form">
+        {{ add_site_form(action="/add_site", tags=tags, sources=sources) }}
+
+        <form action="{{ url_for('sites_routes.check_all_sites') }}" method="post" class="inline">
+          <button type="submit"
+            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition"
+            onclick="return confirm('🔄 Lancer la vérification de tous les sites en arrière-plan ?');">
+            🔄 Vérifier tous les sites
+          </button>
+        </form>
+
+        <!-- Bouton : Supprimer tous les sites -->
+        <form action="{{ url_for('sites_routes.delete_all_sites') }}" method="post" class="inline">
+          <button type="submit"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow transition"
+            onclick="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer TOUS les sites ? Cette action est irréversible !');">
+            🗑️ Supprimer tous les sites
+          </button>
+        </form>
+
+    </div>
+
+  <form
+      hx-get="/backlinks/partial/table"
+      hx-target="#backlinks-table"
+      hx-swap="innerHTML"
+      hx-include="this"
+      class="grid grid-cols-1 md:grid-cols-6 gap-4 bg-gray-900 p-4 rounded-xl"
+      hx-trigger="change"
+  >
+
+      <!-- Recherche -->
+      <div class="md:col-span-1">
+          <label class="text-gray-400 text-sm mb-1">Recherche</label>
+          <input type="text" name="q" value="{{ filters.q }}"
+                placeholder="URL, ancre..."
+                class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+      </div>
+
+      <!-- Tag -->
+      <div>
+          <label class="text-gray-400 text-sm mb-1">Tag</label>
+          <select name="tag" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+              <option value="">Tous</option>
+              {% for t in tags %}
+                  <option value="{{ t.valeur }}"
+                          {% if request.args.get('tag') == t.valeur %}selected{% endif %}>
+                      {{ t.valeur }}
+                  </option>
+              {% endfor %}
+          </select>
+      </div>
+
+      <!-- Source -->
+      <div>
+          <label class="text-gray-400 text-sm mb-1">Source</label>
+          <select name="source" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+              <option value="">Toutes</option>
+              {% for s in sources %}
+                  <option value="{{ s.nom }}"
+                          {% if request.args.get('source') == s.nom %}selected{% endif %}>
+                      {{ s.nom }}
+                  </option>
+              {% endfor %}
+          </select>
+      </div>
+
+      <!-- Follow -->
+      <div>
+          <label class="text-gray-400 text-sm mb-1">Follow</label>
+          <select name="follow" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+              <option value="all" {% if filters.follow == "all" %}selected{% endif %}>Tous</option>
+              <option value="true" {% if filters.follow == "true" %}selected{% endif %}>Follow</option>
+              <option value="false" {% if filters.follow == "false" %}selected{% endif %}>NoFollow</option>
+          </select>
+      </div>
+
+      <!-- Indexation -->
+      <div>
+          <label class="text-gray-400 text-sm mb-1">Indexation</label>
+          <select name="indexed" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+              <option value="all"  {% if filters.indexed == "all" %}selected{% endif %}>Tous</option>
+              <option value="true" {% if filters.indexed == "true" %}selected{% endif %}>Indexé</option>
+              <option value="false" {% if filters.indexed == "false" %}selected{% endif %}>Non indexé</option>
+          </select>
+      </div>
+
+      <!-- Bouton -->
+      <div class="flex items-end justify-start">
+          <button type="submit"
+              class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-full flex items-center gap-2 shadow-md transition-all">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/>
+              </svg>
+              Valider
+          </button>
+          {{ note_lecture("Afin d'actualiser les statistiques et les liens, n'oubliez pas d'appuyer sur Valider.
+              Pour rechercher par un tag, saisissez d'abord le nom du tag, puis sélectionner les labels et appuyez sur Entrée.") }}
+      </div>
+
+  </form>
+
+    
+  <!-- Table des backlinks -->
+  {% set table_backlinks = backlinks %}
+  {% set table_current_page = current_page %}
+  {% set table_total_pages = total_pages %}
+  <div id="backlinks-table">
+      {% include "backlinks/_table.html" with context %}
+  </div>
+
+</div>
+
+<!-- Modal Preview -->
+<div id="preview-modal" class="fixed inset-0 z-50 hidden">
+    <div class="fixed inset-0 bg-black/50" onclick="document.getElementById('preview-modal').classList.add('hidden')"></div>
+    <div class="fixed inset-0 flex items-center justify-center p-4">
+        <div class="bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div id="preview-content">
+                <!-- Contenu chargé via HTMX -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Gestion des modales
+    document.addEventListener('htmx:afterRequest', function(evt) {
+        if (evt.detail.target.id === 'preview-content') {
+            document.getElementById('preview-modal').classList.remove('hidden');
+        }
+    });
+    
+    // Fermeture modal avec Escape
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            document.getElementById('preview-modal').classList.add('hidden');
+        }
+    });
+    
+    // Auto-refresh toutes les 2 minutes
+    setInterval(function() {
+        const activeFilters = document.querySelector('form').elements;
+        let hasActiveFilters = false;
+        
+        for (let element of activeFilters) {
+            if (element.value && element.value !== 'all' && element.value !== '') {
+                hasActiveFilters = true;
+                break;
+            }
+        }
+        
+        // Ne pas auto-refresh si des filtres sont actifs
+        if (!hasActiveFilters) {
+            htmx.trigger('#backlinks-table', 'refresh');
+        }
+    }, 120000); // 2 minutes
+});
+</script>
+{% endblock %}
+
+
+{% block scripts %}
+<!-- Script de gestion des tags -->
+<script>
+async function promptNewTag() {
+  const valeur = prompt("Entrez le nom du nouveau tag :");
+  if (!valeur) return;
+
+  try {
+    const response = await fetch("/add_tag", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ valeur })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      alert(`✅ Tag "${valeur}" ajouté avec succès !`);
+      const select = document.getElementById("tag-select");
+      const option = document.createElement("option");
+      option.value = valeur;
+      option.textContent = valeur;
+      select.appendChild(option);
+      select.value = valeur;
+    } else {
+      alert(result.error || "❌ Erreur : le tag existe déjà.");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("⚠️ Erreur réseau ou serveur.");
+  }
+}
+
+async function promptDeleteTag() {
+  const select = document.getElementById("tag-select");
+  const valeur = select.value;
+
+  if (!valeur) {
+    alert("⚠️ Veuillez d'abord sélectionner un tag à supprimer.");
+    return;
+  }
+
+  const confirmation = confirm(`Voulez-vous vraiment supprimer le tag "${valeur}" ?`);
+  if (!confirmation) return;
+
+  try {
+    const response = await fetch("/delete_tag", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ valeur })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      alert(`🗑️ Tag "${valeur}" supprimé avec succès.`);
+      select.querySelector(`option[value="${valeur}"]`)?.remove();
+      const respTags = await fetch("/get_tags");
+      const tags = await respTags.json();
+      select.innerHTML = '<option value="">-- Choisir un tag --</option>';
+      tags.forEach(tag => {
+        const opt = document.createElement("option");
+        opt.value = tag.valeur;
+        opt.textContent = tag.valeur;
+        select.appendChild(opt);
+      });
+    } else {
+      alert(result.error || "❌ Impossible de supprimer ce tag.");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("⚠️ Erreur lors de la suppression du tag.");
+  }
+}
+
+async function chargerTags() {
+const select = document.getElementById('tag-select');
+if (!select) return;
+
+try {
+    const res = await fetch('/get_tags');
+    if (!res.ok) throw new Error('Erreur de chargement des tags');
+    const tags = await res.json();
+
+    // Vide la liste actuelle
+    select.innerHTML = '<option value="">-- Choisir un tag --</option>';
+
+    // Ajoute chaque tag existant
+    tags.forEach(tag => {
+    const opt = document.createElement('option');
+    opt.value = tag.valeur;
+    opt.textContent = tag.valeur;
+    select.appendChild(opt);
+    });
+} catch (err) {
+    console.error(err);
+}
+}
+
+// Recharge les tags quand la page est prête
+window.addEventListener('DOMContentLoaded', chargerTags);
+
+
+
+// Gestion des sources (similaire aux tags)
+async function promptNewSource() {
+  const nom = prompt("Entrez le nom de la nouvelle source/plateforme :");
+  if (!nom) return;
+
+  try {
+    const response = await fetch("/add_source", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nom })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      alert(`✅ Source "${nom}" ajoutée avec succès !`);
+      const select = document.getElementById("source-select");
+      const option = document.createElement("option");
+      option.value = nom;
+      option.textContent = nom;
+      select.appendChild(option);
+      select.value = nom;
+    } else {
+      alert(result.error || "❌ Erreur : la source existe déjà.");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("⚠️ Erreur réseau ou serveur.");
+  }
+}
+
+async function promptDeleteSource() {
+  const select = document.getElementById("source-select");
+  const nom = select.value;
+
+  if (!nom) {
+    alert("⚠️ Veuillez d'abord sélectionner une source à supprimer.");
+    return;
+  }
+
+  const confirmation = confirm(`Voulez-vous vraiment supprimer la source "${nom}" ?`);
+  if (!confirmation) return;
+
+  try {
+    const response = await fetch("/delete_source", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nom })
+    });
+
+    const result = await response.json();
+
+    if (result.success) {
+      alert(`🗑️ Source "${nom}" supprimée avec succès.`);
+      select.querySelector(`option[value="${nom}"]`)?.remove();
+      await chargerSources();
+    } else {
+      alert(result.error || "❌ Impossible de supprimer cette source.");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("⚠️ Erreur lors de la suppression de la source.");
+  }
+}
+
+async function chargerSources() {
+  const select = document.getElementById('source-select');
+  if (!select) return;
+
+  try {
+    const res = await fetch('/get_sources');
+    if (!res.ok) throw new Error('Erreur de chargement des sources');
+    const sources = await res.json();
+
+    select.innerHTML = '<option value="">-- Choisir une source --</option>';
+
+    sources.forEach(source => {
+      const opt = document.createElement('option');
+      opt.value = source.nom;
+      opt.textContent = source.nom;
+      select.appendChild(opt);
+    });
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+// Charger les sources au chargement de la page
+window.addEventListener('DOMContentLoaded', () => {
+  chargerTags();
+  chargerSources();
+});
+
+
+</script>
+
+{% endblock %}

@@ -1,0 +1,218 @@
+{% extends "_layout/base.html" %}
+{% from "_layout/components.html" import pagination, quality_meter, note_lecture %}
+{% from '_layout/charts_simple.html' import pie_chart, bar_chart, donut_chart %}
+
+{% block title %}Domaines - LinkGuardian{% endblock %}
+
+{% block content %}
+
+<div class="space-y-6">
+    <!-- Header -->
+    <div class="flex items-center justify-between">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Domaines Référents</h1>
+            <p class="text-gray-400 mt-1">Analysez vos domaines référents par qualité</p>
+        </div>
+    </div>
+    
+    <!-- Statistiques globales -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="bg-gray-900 rounded-2xl p-6">
+            <div class="text-2xl font-bold text-white">{{ total_domains }}</div>
+            <div class="text-sm text-gray-400">Domaines totaux</div>
+            <div class="text-xs text-accent mt-1"> +{{ domains_this_month }} domaines en plus</div>
+        </div>
+        
+        <div class="bg-gray-900 rounded-2xl p-6">
+            <div class="text-2xl font-bold text-accent">{{ avg_quality_current }}/100</div>
+            <div class="text-sm text-gray-400">Qualité moyenne</div>
+            <div class="text-xs text-accent mt-1">+{{ quality_increase }} de qualité moyenne</div>
+        </div>
+        
+        <div class="bg-gray-900 rounded-2xl p-6">
+            <div class="text-2xl font-bold text-primary">{{ avg_backlinks_per_domain }}</div>
+            <div class="text-sm text-gray-400">Backlinks moyen par domaine</div>
+        </div>
+        
+        <div class="bg-gray-900 rounded-2xl p-6">
+            <div class="text-2xl font-bold text-warn">{{ premium_domains }}</div>
+            <div class="text-sm text-gray-400">Domaines premium</div>
+            <div class="text-xs text-gray-400 mt-1">Score > 40</div>
+        </div>
+    </div>
+
+    <!-- Graphiques -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <!-- Répartition par qualité -->
+        {{ donut_chart(
+            chart_id='qualityChart',
+            data=quality_distribution,
+            title='Répartition par qualité'
+        ) }}
+        
+        <!-- Top 10 domaines -->
+        {{ bar_chart(
+            chart_id='topDomainsChart',
+            data=top_domains_chart,
+            title='Top 10 des domaines (choisis en fonction de leur qualité moyenne) ',
+            orientation='h'
+        ) }}
+    </div>
+
+    <form
+        hx-get="/domains/partial/table"
+        hx-target="#domains-table"
+        hx-swap="innerHTML"
+        hx-include="this"
+        class="grid grid-cols-1 md:grid-cols-4 gap-4 bg-gray-900 p-4 rounded-xl"
+        hx-trigger="change"
+    >
+
+        <!-- Recherche -->
+        <div class="md:col-span-1">
+            <label class="text-gray-400 text-sm mb-1">Recherche</label>
+            <input type="text" name="q" value="{{ filters.q }}"
+                placeholder="URL, ancre..."
+                class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+        </div>
+
+        <!-- Tag -->
+        <div>
+            <label class="text-gray-400 text-sm mb-1">Tag</label>
+            <select name="tag" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+                <option value="">Tous</option>
+                {% for t in tags %}
+                    <option value="{{ t.valeur }}"
+                            {% if request.args.get('tag') == t.valeur %}selected{% endif %}>
+                        {{ t.valeur }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Source -->
+        <div>
+            <label class="text-gray-400 text-sm mb-1">Source</label>
+            <select name="source" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+                <option value="">Toutes</option>
+                {% for s in sources %}
+                    <option value="{{ s.nom }}"
+                            {% if request.args.get('source') == s.nom %}selected{% endif %}>
+                        {{ s.nom }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <!-- Bouton -->
+        <div class="flex items-end justify-start">
+            <button type="submit"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-full flex items-center gap-2 shadow-md transition-all">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 21l-4.35-4.35M10 18a8 8 0 100-16 8 8 0 000 16z"/>
+                </svg>
+                Valider
+            </button>
+            {{ note_lecture("Afin d'actualiser les statistiques et les liens, n'oubliez pas d'appuyer sur Valider.
+            Pour rechercher par un tag, saisissez d'abord le nom du tag, puis sélectionner les labels et appuyez sur Entrée.") }}
+        </div>
+
+    </form>
+
+    <!-- Table des domaines -->
+    <div id="domains-table">
+        {% include "domains/_domains_table.html" with context %}
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+<script>
+// Graphique de répartition par qualité
+const qualityCtx = document.getElementById('qualityChart').getContext('2d');
+const qualityData = {{ quality_distribution_json|safe }};
+
+new Chart(qualityCtx, {
+    type: 'doughnut',
+    data: {
+        labels: qualityData.labels,
+        datasets: [{
+            data: qualityData.values,
+            backgroundColor: qualityData.colors,
+            borderWidth: 0
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    color: '#9ca3af',
+                    padding: 15,
+                    font: {
+                        size: 12
+                    }
+                }
+            }
+        }
+    }
+});
+
+// Graphique Top 10 domaines
+const topDomainsCtx = document.getElementById('topDomainsChart').getContext('2d');
+const topDomainsData = {{ top_domains_chart_json|safe }};
+
+new Chart(topDomainsCtx, {
+    type: 'bar',
+    data: {
+        labels: topDomainsData.labels,
+        datasets: [{
+            label: 'Nombre de backlinks',
+            data: topDomainsData.values,
+            backgroundColor: topDomainsData.colors,
+            borderWidth: 0,
+            borderRadius: 6
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        indexAxis: 'y',
+        plugins: {
+            legend: {
+                display: false
+            }
+        },
+        scales: {
+            x: {
+                grid: {
+                    color: '#374151'
+                },
+                ticks: {
+                    color: '#9ca3af'
+                }
+            },
+            y: {
+                grid: {
+                    display: false
+                },
+                ticks: {
+                    color: '#9ca3af',
+                    font: {
+                        size: 11
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+{% endblock %}
