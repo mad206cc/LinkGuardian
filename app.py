@@ -51,14 +51,12 @@ AIOHTTP_TIMEOUT = ClientTimeout(total=30)
 # 🚀 Création de l'application Flask
 # ===============================
 app = Flask(__name__)
-app.secret_key = os.getenv(
-    "SECRET_KEY", "dfsdfsdfdfsdfsdfsdfsdfsdfsdfsdffsd"
-)  # ⚠️ À changer !
+app.secret_key = os.getenv("SECRET_KEY")
 
 db_user = os.getenv("POSTGRES_USER")
 db_pass = os.getenv("POSTGRES_PASSWORD")
-db_host = os.getenv("DB_HOST", "postgres")
-db_port = os.getenv("DB_PORT", "5432")
+db_host = os.getenv("DB_HOST")
+db_port = os.getenv("DB_PORT")
 db_name = os.getenv("POSTGRES_DB")
 
 app.config["SQLALCHEMY_DATABASE_URI"] = (
@@ -163,6 +161,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=5000,
-        debug=True,
-        use_reloader=True,  # ⬅️ Active le rechargement
+        debug=False,
     )

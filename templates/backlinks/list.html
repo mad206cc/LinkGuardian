@@ -1,5 +1,6 @@
 {% extends "_layout/base.html" %}
-{% from "_layout/components.html" import filter_form, data_table, pagination, status_badge, quality_meter, add_site_form, note_lecture %}
+{% from "_layout/components.html" import filter_form, data_table, pagination, status_badge, quality_meter, add_site_form, note_lecture,
+dropdown_single , multiselect %}
 
 
 {% block title %}Backlinks - LinkGuardian{% endblock %}
@@ -93,72 +94,223 @@
 
     </div>
 
-  <form
-      hx-get="/backlinks/partial/table"
-      hx-target="#backlinks-table"
-      hx-swap="innerHTML"
-      hx-include="this"
-      class="grid grid-cols-1 md:grid-cols-6 gap-4 bg-gray-900 p-4 rounded-xl"
-      hx-trigger="change"
-  >
+    <form
+        hx-trigger="change"
+        hx-swap="outerHTML"
+        hx-get="/backlinks/partial/table"
+        hx-target="#backlinks-content"
+        class="grid grid-cols-1 md:grid-cols-7 gap-4 bg-gray-900 p-4 rounded-xl"
+    >
 
-      <!-- Recherche -->
-      <div class="md:col-span-1">
+      {# ============================
+          BARRE DE RECHERCHE
+      ============================ #}
+      <div>
           <label class="text-gray-400 text-sm mb-1">Recherche</label>
-          <input type="text" name="q" value="{{ filters.q }}"
-                placeholder="URL, ancre..."
-                class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
+          <input type="text"
+              name="q"
+              value="{{ filters.q }}"
+              placeholder="URL, ancre..."
+              class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
       </div>
 
-      <!-- Tag -->
-      <div>
-          <label class="text-gray-400 text-sm mb-1">Tag</label>
-          <select name="tag" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
-              <option value="">Tous</option>
-              {% for t in tags %}
-                  <option value="{{ t.valeur }}"
-                          {% if request.args.get('tag') == t.valeur %}selected{% endif %}>
-                      {{ t.valeur }}
-                  </option>
-              {% endfor %}
-          </select>
-      </div>
+      {# ============================
+          MULTI-USERS (Admin only)
+      ============================ #}
+      {% if current_user.role == 'main_admin' %}
+      <div 
+          class="relative min-w-[220px]"
+          x-data='{
+              open: false,
+              selected: {{ filters.user_id|tojson if filters.user_id else "[]" }},
+              allUserIds: {{ users|map(attribute="id")|list|tojson }},
 
-      <!-- Source -->
-      <div>
-          <label class="text-gray-400 text-sm mb-1">Source</label>
-          <select name="source" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
-              <option value="">Toutes</option>
-              {% for s in sources %}
-                  <option value="{{ s.nom }}"
-                          {% if request.args.get('source') == s.nom %}selected{% endif %}>
-                      {{ s.nom }}
-                  </option>
-              {% endfor %}
-          </select>
-      </div>
+              init() {
 
-      <!-- Follow -->
-      <div>
-          <label class="text-gray-400 text-sm mb-1">Follow</label>
-          <select name="follow" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
-              <option value="all" {% if filters.follow == "all" %}selected{% endif %}>Tous</option>
-              <option value="true" {% if filters.follow == "true" %}selected{% endif %}>Follow</option>
-              <option value="false" {% if filters.follow == "false" %}selected{% endif %}>NoFollow</option>
-          </select>
-      </div>
+                  // Force selected à être une liste
+                  if (!Array.isArray(this.selected)) {
+                      this.selected = ["__all__"];
+                  }
+                  
+                  // Si vide → Tous
+                  if (this.selected.length === 0) {
+                      this.selected = ["__all__"];
+                  }
+              },
 
-      <!-- Indexation -->
-      <div>
-          <label class="text-gray-400 text-sm mb-1">Indexation</label>
-          <select name="indexed" class="w-full px-3 py-2 bg-gray-800 rounded-lg text-white">
-              <option value="all"  {% if filters.indexed == "all" %}selected{% endif %}>Tous</option>
-              <option value="true" {% if filters.indexed == "true" %}selected{% endif %}>Indexé</option>
-              <option value="false" {% if filters.indexed == "false" %}selected{% endif %}>Non indexé</option>
-          </select>
-      </div>
+              toggle(id) {
+                  if (id === "__all__") {
+                      this.selected = ["__all__"];
+                      return;
+                  }
 
-      <!-- Bouton -->
+                  this.selected = this.selected.filter(v => v !== "__all__");
+
+                  if (this.selected.includes(id)) {
+                      this.selected = this.selected.filter(v => v !== id);
+                  } else {
+                      this.selected.push(id);
+                  }
+
+                  if (this.selected.length === 0) {
+                      this.selected = ["__all__"];
+                  }
+
+                  if (this.selected.length === this.allUserIds.length) {
+                      this.selected = ["__all__"];
+                  }
+              },
+
+              isChecked(id) {
+                  return this.selected.includes(id);
+              }
+          }'
+      >
+          
+        <label class="text-gray-400 text-sm mb-1">Utilisateurs</label>
+
+        <!-- Bouton dropdown -->
+        <div @click="open = !open"
+            class="flex flex-wrap gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl cursor-pointer">
+
+            <!-- 0) Si aucun utilisateur sélectionné -->
+            <template x-if="selected.length === 0">
+                <span class="text-gray-400">Tous les utilisateurs</span>
+            </template>
+
+            <!-- 1) Si un seul sélectionné -->
+            <template x-if="selected.length === 1">
+                <span class="text-primary"
+                    x-text="selected[0] === '__all__'
+                        ? 'Tous les utilisateurs'
+                        : (window.userNames[selected[0]] ?? 'Utilisateur')">
+                </span>
+            </template>
+
+            <!-- 2) Si plusieurs utilisateurs sélectionnés -->
+            <template x-if="selected.length > 1">
+                <span class="text-primary">Plusieurs utilisateurs</span>
+            </template>
+
+            <!-- 3) Badges individuels si plusieurs sélectionnés 
+            <template x-if="selected.length > 1">
+                <template x-for="uid in selected" :key="uid">
+                    <template x-if="uid !== '__all__'">
+                        <span class="bg-primary/20 text-primary px-2 py-1 rounded-lg text-sm">
+                            <span x-text="window.userNames[uid] ?? ('ID ' + uid)"></span>
+                        </span>
+                    </template>
+                </template>
+            </template>
+            -->
+
+        </div>
+
+        <!-- DROPDOWN -->
+        <div x-show="open" @click.outside="open = false"
+            class="absolute z-50 w-full mt-2 bg-gray-800 border border-gray-700 
+                rounded-xl shadow-xl max-h-64 overflow-y-auto p-2">
+
+            <!-- Tous -->
+            <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                <input type="checkbox"
+                    name="user_id"
+                    value="__all__"
+                    @change="toggle('__all__')"
+                    :checked="isChecked('__all__')">
+                <span>Tous les utilisateurs</span>
+            </label>
+
+            <!-- Liste des utilisateurs -->
+            {% for u in users %}
+                {% set full_name = (u.first_name ~ ' ' ~ u.last_name).strip() or u.email %}
+
+                <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                    <input type="checkbox"
+                        name="user_id"
+                        value="{{ u.id }}"
+                        @change="toggle('{{ u.id }}')"
+                        :checked="isChecked('{{ u.id }}')">
+
+                    <span>
+                        {% if u.id == current_user.id %}
+                            {{ full_name }} (moi)
+                        {% else %}
+                            {{ full_name }}
+                        {% endif %}
+                    </span>
+
+                    <script>
+                        if (!window.userNames) window.userNames = {};
+                        window.userNames["{{ u.id }}"] = "{{ full_name }}{% if u.id == current_user.id %} (moi){% endif %}";
+                    </script>
+
+                </label>
+            {% endfor %}
+        </div>
+
+        <!-- Envoi réel au backend -->
+        <template x-for="uid in selected" :key="'huser-'+uid">
+            <input type="hidden" name="user_id" :value="uid">
+        </template>
+
+      </div>
+      {% endif %}
+
+
+      {# ============================
+          MULTI-TAGS
+      ============================ #}
+      {{ multiselect(
+          "tag",
+          "Tags",
+          tags | map(attribute="valeur") | list,
+          filters["tag"]
+      ) }}
+      
+      {# ============================
+          MULTI-SOURCES
+      ============================ #}
+      {{ multiselect(
+          "source",
+          "Sources",
+          sources | map(attribute="nom") | list,
+          filters["source"]
+      ) }}
+
+      {# ============================
+          CHOIX UNIQUE - FOLLOW
+      ============================ #}
+
+      {{ dropdown_single(
+          "follow",
+          "Follow",
+          {
+              "all": "Tous",
+              "true": "Follow",
+              "false": "NoFollow"
+          },
+          filters.follow
+      ) }}
+
+      {# ============================
+          CHOIX UNIQUE - INDEXATION
+      ============================ #}
+
+      {{ dropdown_single(
+          "indexed",
+          "Indexation",
+          {
+              "all": "Tous",
+              "true": "Indexé !",
+              "false": "Non indexé"
+          },
+          filters.indexed
+      ) }}
+
+      {# ============================
+          BOUTON - VALIDER
+      ============================ #}
       <div class="flex items-end justify-start">
           <button type="submit"
               class="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white text-sm rounded-full flex items-center gap-2 shadow-md transition-all">

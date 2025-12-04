@@ -512,3 +512,182 @@
     </div>
 {% endmacro %}
 
+
+<!-- Macro pour les filtres à choix unique-->
+
+{% macro dropdown_single(name, label, options, selected) %}
+<div 
+    class="relative min-w-[220px]"
+    x-data='{
+        open: false,
+        selected: {{ (selected or []) | tojson }},
+        options: {{ options | tojson }},
+
+        init() {
+            // Si aucune valeur sélectionnée → prendre la première option
+            if (!this.selected || !(this.selected in this.options)) {
+                this.selected = Object.keys(this.options)[0];
+            }
+        },
+
+        choose(val) {
+            this.selected = val;
+            this.open = false;
+        },
+
+        isChecked(val) {
+            return this.selected === val;
+        }
+    }'
+>
+
+    <label class="text-gray-400 text-sm mb-1">{{ label }}</label>
+
+    <div @click="open = !open"
+         class="flex flex-wrap gap-2 px-3 py-2 bg-gray-800 border border-gray-700 
+                rounded-xl cursor-pointer">
+        <span class="text-primary"
+              x-text="options[selected] ?? 'Tous'">
+        </span>
+    </div>
+
+    <div x-show="open" @click.outside="open = false"
+         class="absolute z-50 w-full mt-2 bg-gray-800 border border-gray-700 
+                rounded-xl shadow-xl max-h-64 overflow-y-auto p-2">
+
+        <template x-for="[value, text] in Object.entries(options)" :key="value">
+            <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer"
+                   @click="choose(value)">
+                <input type="radio" :name="name + '-visible'" :value="value" :checked="isChecked(value)">
+                <span x-text="text"></span>
+            </label>
+        </template>
+
+    </div>
+
+    <input type="hidden" name="{{ name }}" :value="selected">
+</div>
+{% endmacro %}
+
+
+<!-- Macro pour les filtres à choix multiple -->
+{% macro multiselect(name, label, items, selected) %}
+
+<!-- Dictionnaire des labels (doit être exécuté AVANT Alpine) -->
+<script>
+    window["{{ name }}Labels"] = {};
+    {% for item in items %}
+        window["{{ name }}Labels"]["{{ item }}"] = "{{ item }}";
+    {% endfor %}
+</script>
+
+<div 
+    class="relative min-w-[220px]"
+    x-data='{
+        name: "{{ name }}",
+        open: false,
+        selected: {{ (selected or []) | tojson }},
+        allItems: {{ items | tojson }},
+
+        init() {
+            if (!Array.isArray(this.selected) || this.selected.length === 0) {
+                this.selected = ["__all__"];
+            }
+        },
+
+        toggle(id) {
+            if (id === "__all__") {
+                this.selected = ["__all__"];
+                return;
+            }
+
+            this.selected = this.selected.filter(v => v !== "__all__");
+
+            if (this.selected.includes(id)) {
+                this.selected = this.selected.filter(v => v !== id);
+            } else {
+                this.selected.push(id);
+            }
+
+            if (this.selected.length === 0) {
+                this.selected = ["__all__"];
+            }
+
+            if (this.selected.length === this.allItems.length) {
+                this.selected = ["__all__"];
+            }
+        },
+
+        isChecked(id) {
+            return this.selected.includes(id);
+        }
+    }'
+>
+
+    <label class="text-gray-400 text-sm mb-1">{{ label }}</label>
+
+    <!-- Bouton affiché -->
+    <div @click="open = !open"
+         class="flex flex-wrap gap-2 px-3 py-2 bg-gray-800 border border-gray-700 
+                rounded-xl cursor-pointer">
+
+        <!-- Aucun -->
+        <template x-if="selected.length === 0">
+            <span class="text-gray-400">Tous les choix</span>
+        </template>
+
+        <!-- Un seul -->
+        <template x-if="selected.length === 1">
+            <span class="text-primary"
+                  x-text="selected[0] === '__all__'
+                      ? 'Tous les choix'
+                      : window[name + 'Labels'][selected[0]]">
+            </span>
+        </template>
+
+        <!-- Plusieurs -->
+        <template x-if="selected.length > 1">
+            <span class="text-primary">Plusieurs choix</span>
+        </template>
+    </div>
+
+    <!-- Dropdown -->
+    <div x-show="open" @click.outside="open = false"
+         class="absolute z-50 w-full mt-2 bg-gray-800 border border-gray-700 
+                rounded-xl shadow-xl max-h-64 overflow-y-auto p-2">
+
+        <!-- TOUS -->
+        <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+            <input type="checkbox"
+                   :name="name"
+                   value="__all__"
+                   @change="toggle('__all__')"
+                   :checked="isChecked('__all__')">
+            <span>Tous les choix</span>
+        </label>
+
+        <!-- Items -->
+        {% for item in items %}
+            <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+
+                <input type="checkbox"
+                       name="{{ name }}"
+                       value="{{ item }}"
+                       @change="toggle('{{ item }}')"
+                       :checked="isChecked('{{ item }}')">
+
+                <span>{{ item }}</span>
+            </label>
+        {% endfor %}
+    </div>
+
+    <!-- Hidden fields envoyés réellement au backend -->
+    <template x-for="item in selected" :key="'h'+name+'-'+item">
+        <input type="hidden" :name="name" :value="item">
+    </template>
+
+</div>
+{% endmacro %}
+
+
+

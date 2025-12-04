@@ -33,19 +33,54 @@
       >
 
       <!-- Mot de passe avec bouton œil -->
-      <div class="relative">
-        <input 
-          id="password"
-          name="password" 
-          type="password" 
-          placeholder="Mot de passe" 
-          class="w-full px-4 py-3 pr-12 text-lg bg-white/90 text-black rounded-xl border border-gray-300 focus:border-blue-400 focus:ring-2 focus:ring-blue-300 focus:outline-none transition" 
-          required
-        >
-        <button type="button" onclick="togglePassword('password', this)" 
-                class="absolute inset-y-0 right-4 flex items-center text-gray-600 hover:text-gray-800 focus:outline-none">
-          👁️
-        </button>
+      <div x-data="{
+              password: '',
+              valid: false
+          }"
+          x-init="
+              $watch('password', value => {
+                  const regex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/;
+                  valid = regex.test(value);
+              });
+          "
+          class="space-y-4"
+      >
+
+          <!-- Consignes (au-dessus du champ + bel espacement) -->
+          <p class="text-sm"
+            :class="valid ? 'text-green-600' : 'text-red-600'">
+              Le mot de passe doit contenir au moins 8 caractères,  
+              dont 1 majuscule, 1 minuscule, 1 chiffre et 1 symbole.
+          </p>
+
+          <!-- Champ mot de passe avec œil -->
+          <div class="relative">
+              <input 
+                id="password"
+                name="password" 
+                :type="$refs.eyeBtn?.dataset.show === 'true' ? 'text' : 'password'"
+                x-model="password"
+                placeholder="Mot de passe" 
+                class="w-full px-4 py-3 pr-12 text-lg bg-white/90 text-black rounded-xl border transition focus:outline-none
+                      border-gray-300 focus:ring-2"
+                :class="valid 
+                    ? 'focus:ring-green-400 border-green-500' 
+                    : 'focus:ring-red-400 border-red-500'"
+                required
+              >
+
+              <!-- Bouton œil (tu gardes TON JS existant !) -->
+              <button 
+                  type="button"
+                  x-ref="eyeBtn"
+                  data-show="false"
+                  onclick="togglePassword('password', this)"
+                  class="absolute inset-y-0 right-4 flex items-center text-gray-600 hover:text-gray-800 focus:outline-none"
+              >
+                  👁️
+              </button>
+          </div>
+
       </div>
 
       <!-- Confirmation de mot de passe avec œil aussi -->
@@ -64,13 +99,16 @@
         </button>
       </div>
 
-      <button 
-        type="submit" 
-        class="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold py-3 rounded-xl hover:scale-[1.02] hover:shadow-lg transition-transform duration-200"
-      >
-        👤➕ S'inscrire
-      </button>
-    </form>
+    <!-- Bouton S'inscrire -->
+    <button 
+      type="submit" 
+      :disabled="!valid"
+      class="w-full bg-gradient-to-r from-blue-600 to-indigo-700 text-white font-semibold py-3 rounded-xl 
+            hover:scale-[1.02] hover:shadow-lg transition-transform duration-200
+            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+    >
+      👤➕ S'inscrire
+    </button>
 
     <div class="mt-6 text-gray-300 text-base">
       Déjà inscrit ?

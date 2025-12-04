@@ -1,6 +1,7 @@
 # ===============================
 # 📦 Librairies & dépendances Flask
 # ===============================
+import os
 from asyncio import Semaphore
 
 from aiohttp import ClientTimeout
@@ -50,7 +51,7 @@ AIOHTTP_TIMEOUT = ClientTimeout(total=30)
 # 🚀 Création de l'application Flask
 # ===============================
 app = Flask(__name__)
-app.secret_key = "dfsdfsdfdfsdfsdfsdfsdfsdfsdfsdffsd"
+app.secret_key = os.getenv("SECRET_KEY")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///site.db"
 
 # ===============================
@@ -60,6 +61,7 @@ db.init_app(app)
 migrate = Migrate(app, db)
 login_manager.init_app(app)  # ⚠️ Obligatoire avant Admin
 executor = Executor(app)
+
 
 # ===============================
 # 🔐 Configuration Flask-Login

@@ -49,7 +49,11 @@ class Website(db.Model):
     google_index_status = db.Column(db.String(50))
 
     # ✅ Relation pour accéder facilement aux infos de l'utilisateur
-    user = db.relationship("User", backref="websites", lazy=True)
+    user = db.relationship(
+        "User",
+        backref=db.backref("websites", passive_deletes=True),
+        lazy=True
+    )
 
     # ✅ BONUS : Property pour afficher prénom + nom
     @property
@@ -67,7 +71,11 @@ class WebsiteStats(db.Model):
     """Historique des KPIs calculés à un instant donné pour un utilisateur."""
 
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False
+    )
     date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
     total_backlinks = db.Column(db.Integer)
@@ -81,7 +89,11 @@ class WebsiteStats(db.Model):
     # Optionnel : tu peux aussi stocker les infos JSON
     raw_data = db.Column(db.JSON, nullable=True)
 
-    user = db.relationship("User", backref="stats_history", lazy=True)
+    user = db.relationship(
+        "User",
+        backref=db.backref("stats_history", passive_deletes=True),
+        lazy=True
+    )
 
     def __repr__(self):
         return f"<WebsiteStats {self.user_id} {self.date.strftime('%Y-%m-%d')}>"
@@ -90,7 +102,16 @@ class WebsiteStats(db.Model):
 class TaskRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     task_id = db.Column(db.String(200), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("user.id", ondelete="CASCADE"),
+        nullable=False
+    )
+
+    user = db.relationship(
+        "User",
+        backref=db.backref("task_records", passive_deletes=True)
+    )
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 

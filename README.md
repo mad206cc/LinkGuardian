@@ -38,7 +38,7 @@ Tu verras qu'un dossier ```\migrations``` va se créer pour sauvegarder les migr
 ## **Prise en main de LinkGuardian sur Docker Destop :**
 
 Pour ce faire, sans modifier le dossier : 
- 1) Ouvrir un invite de commande, et se placer dans le dossier du projet. En parallèle, vérifie que t'as bien activé le Docker Destop.
+ 1) Ouvrir un PowerShell, et se placer dans le dossier du projet. En parallèle, vérifie que t'as bien activé le Docker Destop.
 
  2) Dans l'invite de commande, saisir le script suivant : 
 
@@ -46,6 +46,12 @@ Pour ce faire, sans modifier le dossier :
  docker compose build --no-cache
  docker compose up -d
  docker exec -it linkguardian_web python -c "from app import app, db; app.app_context().push(); db.create_all()"
+ ```
+
+ 3) Une dernière étape d'initialisation de migration Flask est important, de même dans le PowerShell : 
+ ```bash
+ docker compose exec web flask db init
+ docker compose exec web flask db upgrade
  ```
 
 Suivant la manière comment tu héberges le site, l'adresse URL d'accès peut changer : 
@@ -63,5 +69,63 @@ Pour l'authentification, il faut saisir :
 
 **!!! WARNING !!!** : Pour que l'application soit ouvert tout le monde, il faut que le serveur soit allumé en permanence et Docker Destop également.
 
-(Le README a été écrit avec une grande qualité rédactionnel négatif, si vous voyez des fautes, n'hésitez pas à ignorer !)
+## **En cas de modification du projet :**
+
+Il est important de s'en souvenir que la projet est séparé en plusieurs, qui s'ollicitent plusieurs extensions.
+
+### 🔧 Celery
+Celery est utilisé pour exécuter en arrière-plan toutes les tâches lourdes ou longues
+(vérifications des backlinks, import de sites, tâches automatisées, etc.).  
+Il permet à l'application de rester fluide pendant que les analyses se déroulent en parallèle.  
+Dans LinkGuardian, plusieurs workers Celery traitent les files `urgent`, `standard`, `weekly`.
+
+### 🐰 RabbitMQ
+RabbitMQ est le message broker utilisé par Celery.  Il sert de file d'attente pour stocker et distribuer les tâches aux workers.  
+Le backend ajoute une tâche → RabbitMQ la met en file → Celery worker l'exécute.
+Dans LinkGuardian, on l'utilise principalement pour gérer le lancement des requêtes d'API (Serpapi et Babbar).
+
+### 🗄 Base de données — PostgreSQL
+
+PostgreSQL est utilisé comme base de données principale.
+Il stocke l’ensemble des informations du projet :
+
+- utilisateurs & rôles
+- sites web surveillés
+- backlinks et états d’indexation
+- historiques & statistiques des scans
+- tags, sources et métadonnées
+- tâches Celery associées aux vérifications
+
+L’accès se fait depuis le backend via SQLAlchemy, garantissant
+une interaction fiable et performante avec les données. 
+
+Si vous souhaitez consulter ou modifier l'architecture de la base de données, consulter le fichier ```models.py```.
+
+En cas de modification apporter dans ```models.py```, il faut faire une migration à patir du PowerShell (c'est surtout le cas où la première migration a déjà été faites) : 
+```bash
+docker compose exec web flask db migrate -m "description de la modification"
+docker compose exec web flask db upgrade
+```
+
+### 🎯 Backend
+Développé avec **Python + Flask**, il gère toute la logique métier :
+- gestion des utilisateurs & sessions
+- communication avec la base de données
+- vérification des backlinks
+- API et routes utilisées par le frontend
+- planification & exécution de tâches via Celery + RabbitMQ
+
+### 🎨 Frontend
+Construit en **HTML + TailwindCSS + HTMX + AlpineJS**, il fournit l’interface utilisateur :
+- pages dashboard et listing des sites/backlinks
+- filtres dynamiques sans rechargement
+- interactions légères côté client
+- récupération et affichage des données du backend
+
+Dans le cas où des mofications sont apportées dans backend et le frontend, il faut recontruire le container du Docker Destop. Dans le PowerShell, tapez : 
+```bash
+docker compose down
+docker compose up --build -d
+```
+
 

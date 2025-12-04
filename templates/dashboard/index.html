@@ -13,88 +13,303 @@
     <div class="flex items-center justify-between">
         <div>
             <h1 class="text-3xl font-bold text-white">Dashboard</h1>
-            <p class="text-gray-400 mt-1">Vue d'ensemble de votre profil de liens</p>
+            <p class="text-gray-400 mt-1">Vue d'ensemble de votre profil de liens ou de tout le monde si t'es administrateur principal.</p>
         </div>
         
         <!-- Période de temps AVEC HTMX -->
         <div class="flex items-center space-x-4">
 
-            <select name="tag"
+            <form 
                 hx-get="/dashboard/content"
-                hx-trigger="change"
                 hx-target="#dashboard-content"
-                hx-swap="innerHTML"
-                hx-indicator="#loading-spinner"
-                hx-include="[name='range'], [name='source'], this"
-                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary">
-
-                <option value="">Tous les tags</option>
-
-                {% for t in tags %}
-                    <option value="{{ t.valeur }}" 
-                        {% if filter_tag == t.valeur %}selected{% endif %}>
-                        {{ t.valeur }}
-                    </option>
-                {% endfor %}
-            </select>
-
-            <select name="source"
-                hx-get="/dashboard/content"
+                hx-swap="outerHTML"
                 hx-trigger="change"
-                hx-target="#dashboard-content"
-                hx-swap="innerHTML"
-                hx-indicator="#loading-spinner"
-                hx-include="[name='range'], [name='tag'], this"
-                class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary">
+                class="flex flex-wrap items-start gap-4"
+            >
 
-                <option value="">Toutes les sources</option>
+                {# ============================
+                    MULTI-USERS (Admin only)
+                ============================ #}
+                {% if current_user.role == 'main_admin' %}
+                <div 
+                    class="relative min-w-[260px]"
+                    x-data="{
+                        open: false,
+                        selected: {{ filter_user_ids|tojson if filter_user_ids else '[]' }},
+                        allUserIds: {{ users|map(attribute='id')|list|tojson }},
 
-                {% for s in sources %}
-                    <option value="{{ s.nom }}"
-                        {% if filter_source == s.nom %}selected{% endif %}>
-                        {{ s.nom }}
-                    </option>
-                {% endfor %}
-            </select>
+                        init() {
+                            // Si aucun user sélectionné → auto-select '__all__'
+                            if (this.selected.length === 0) {
+                                this.selected = ['__all__'];
+                            }
+                        },
 
-            <select name="range"
-                    id="range-selector"
-                    hx-get="/dashboard/content"
-                    hx-trigger="change"
-                    hx-target="#dashboard-content"
-                    hx-swap="innerHTML"
-                    hx-indicator="#loading-spinner"
-                    hx-include="this"
-                    class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="1m" {% if range_param == '1m' %}selected{% endif %}>Dernier mois</option>
-                        <option value="3m" {% if range_param == '3m' %}selected{% endif %}>3 derniers mois</option>
-                        <option value="6m" {% if range_param == '6m' %}selected{% endif %}>6 derniers mois</option>
-                        <option value="12m" {% if range_param == '12m' %}selected{% endif %}>12 derniers mois</option>
-            </select>
-            
-            <!-- 
-            <button hx-get="/dashboard/content"
-                    hx-include="#range-selector"
-                    hx-target="#dashboard-content"
-                    hx-swap="innerHTML"
-                    hx-indicator="#loading-spinner"
-                    class="btn-primary flex items-center">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
-                </svg>
-                Actualiser
-            </button>
-            -->
+                        toggle(id) {
+                            // 1) Si l’utilisateur clique sur '__all__'
+                            if (id === '__all__') {
+                                this.selected = ['__all__'];
+                                return;
+                            }
 
-            <!-- Indicateur de chargement -->
-            <!-- 
-            <div id="loading-spinner" class="htmx-indicator">
-                <svg class="animate-spin h-5 w-5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-            </div>
-            -->
+                            // 2) Si '__all__' est sélectionné → on le retire
+                            this.selected = this.selected.filter(v => v !== '__all__');
+
+                            // 3) Toggle user normal
+                            if (this.selected.includes(id)) {
+                                this.selected = this.selected.filter(v => v !== id);
+                            } else {
+                                this.selected.push(id);
+                            }
+
+                            // 4) Si plus rien → remettre '__all__'
+                            if (this.selected.length === 0) {
+                                this.selected = ['__all__'];
+                            }
+
+                            // 5) Si TOUS les users sont sélectionnés → on remplace par '__all__'
+                            if (this.selected.length === this.allUserIds.length) {
+                                this.selected = ['__all__'];
+                            }
+
+                        },
+
+                        isChecked(id) {
+                            return this.selected.includes(id);
+                        }
+                    }"
+                >
+
+                    <div @click="open = !open"
+                        class="flex flex-wrap gap-2 px-3 py-2 bg-gray-800 border border-gray-700 rounded-xl cursor-pointer">
+
+                        <!-- 0) Si aucun utilisateur sélectionné -->
+                        <template x-if="selected.length === 0">
+                            <span class="text-gray-400">Tous les utilisateurs</span>
+                        </template>
+
+                        <!-- 1) Si un seul sélectionné -->
+                        <template x-if="selected.length === 1">
+                            <span class="text-primary"
+                                x-text="selected[0] === '__all__'
+                                    ? 'Tous les utilisateurs'
+                                    : (window.userNames[selected[0]] ?? 'Utilisateur')">
+                            </span>
+                        </template>
+
+                        <!-- 2) Si plusieurs utilisateurs sélectionnés -->
+                        <template x-if="selected.length > 1">
+                            <span class="text-primary">Plusieurs utilisateurs</span>
+                        </template>
+
+                        <!-- 3) Badges individuels si plusieurs sélectionnés 
+                        <template x-if="selected.length > 1">
+                            <template x-for="uid in selected" :key="uid">
+                                <template x-if="uid !== '__all__'">
+                                    <span class="bg-primary/20 text-primary px-2 py-1 rounded-lg text-sm">
+                                        <span x-text="window.userNames[uid] ?? ('ID ' + uid)"></span>
+                                    </span>
+                                </template>
+                            </template>
+                        </template>
+                        -->
+
+                    </div>
+
+                    <!-- Dropdown -->
+                    <div x-show="open" @click.outside="open = false"
+                        class="absolute z-50 w-full mt-2 bg-gray-800 border border-gray-700 
+                            rounded-xl shadow-xl max-h-64 overflow-y-auto p-2">
+
+                        <!-- --- OPTION TOUS LES UTILISATEURS --- -->
+                        <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer font-semibold text-primary">
+
+                            <input type="checkbox"
+                                name="user_id"
+                                value="__all__"
+                                class="form-checkbox text-primary"
+
+                                :checked="selected.length === 1 && selected[0] === '__all__'"
+
+                                @change="toggle('__all__')"
+                                :checked="isChecked('__all__')"
+                                "
+                            >
+
+                            <span>Tous les utilisateurs</span>
+                        </label>
+
+                        <!-- Liste des utilisateurs réels -->
+                        {% for u in users %}
+                            {% set full_name = (u.first_name ~ ' ' ~ u.last_name).strip() %}
+
+                            <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <input type="checkbox"
+                                    name="user_id"
+                                    value="{{ u.id }}"
+                                    class="form-checkbox text-primary"
+                                    @change="toggle('{{ u.id }}')"
+                                    :checked="isChecked('{{ u.id }}')">
+
+                                <span>
+                                    {% if u.id == current_user.id %}
+                                        {{ full_name if full_name else u.email }} (moi)
+                                    {% else %}
+                                        {{ full_name if full_name else u.email }}
+                                    {% endif %}
+                                </span>
+
+                                <script>
+                                    if (!window.userNames) window.userNames = {};
+                                    window.userNames["{{ u.id }}"] = "{{ full_name if full_name else u.email }}";
+                                </script>
+
+                            </label>
+                        {% endfor %}
+
+                    </div>
+
+                    <!-- Hidden fields -->
+                    <template x-for="uid in selected" :key="'hid-'+uid">
+                        <input type="hidden" name="user_id" :value="uid">
+                    </template>
+
+                </div>
+                {% endif %}
+
+
+                {# ============================
+                    MULTI-TAGS DROPDOWN
+                ============================ #}
+                <div 
+                    class="relative min-w-[220px]"
+                    x-data="{
+                        open: false,
+                        selected: {{ filter_tags|tojson if filter_tags else '[]' }},
+                        toggle(val) {
+                            if (this.selected.includes(val)) {
+                                this.selected = this.selected.filter(v => v !== val);
+                            } else {
+                                this.selected.push(val);
+                            }
+                        }
+                    }"
+                >
+
+                    <div @click="open = !open"
+                        class="flex flex-wrap gap-2 px-3 py-2 bg-gray-800 border border-gray-700 
+                            rounded-xl cursor-pointer">
+
+                        <template x-if="selected.length === 0">
+                            <span class="text-gray-400">Tous les tags</span>
+                        </template>
+
+                        <template x-for="tag in selected" :key="tag">
+                            <span class="bg-primary/20 text-primary px-2 py-1 rounded-lg text-sm"
+                                x-text="tag"></span>
+                        </template>
+
+                    </div>
+
+                    <div x-show="open" @click.outside="open = false"
+                        class="absolute z-50 w-full mt-2 bg-gray-800 border border-gray-700 
+                            rounded-xl shadow-xl max-h-64 overflow-y-auto p-2">
+
+                        {% for t in tags %}
+                            <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <input type="checkbox"
+                                    name="tag"
+                                    value="{{ t.valeur }}"
+                                    class="form-checkbox text-primary"
+                                    :checked="selected.includes('{{ t.valeur }}')"
+                                    @change="toggle('{{ t.valeur }}')">
+                                <span>{{ t.valeur }}</span>
+                            </label>
+                        {% endfor %}
+                    </div>
+
+                    <template x-for="tag in selected" :key="'h-tag-'+tag">
+                        <input type="hidden" name="tag" :value="tag">
+                    </template>
+
+                </div>
+
+
+                {# ============================
+                    MULTI-SOURCES DROPDOWN
+                ============================ #}
+
+                <div 
+                    class="relative min-w-[220px]"
+                    x-data="{
+                        open: false,
+                        selected: {{ filter_sources|tojson if filter_sources else '[]' }},
+                        toggle(val) {
+                            if (this.selected.includes(val)) {
+                                this.selected = this.selected.filter(v => v !== val);
+                            } else {
+                                this.selected.push(val);
+                            }
+                        }
+                    }"
+                >
+
+                    <div @click="open = !open"
+                        class="flex flex-wrap gap-2 px-3 py-2 bg-gray-800 border border-gray-700 
+                            rounded-xl cursor-pointer">
+
+                        <template x-if="selected.length === 0">
+                            <span class="text-gray-400">Toutes les sources</span>
+                        </template>
+
+                        <template x-for="src in selected" :key="src">
+                            <span class="bg-primary/20 text-primary px-2 py-1 rounded-lg text-sm"
+                                x-text="src"></span>
+                        </template>
+
+                    </div>
+
+                    <div x-show="open"
+                        @click.outside="open = false"
+                        class="absolute z-50 w-full mt-2 bg-gray-800 border border-gray-700
+                            rounded-xl shadow-xl max-h-64 overflow-y-auto p-2">
+
+                        {% for s in sources %}
+                            <label class="flex items-center gap-2 p-2 hover:bg-gray-700 rounded-lg cursor-pointer">
+                                <input type="checkbox"
+                                    name="source"
+                                    value="{{ s.nom }}"
+                                    class="form-checkbox text-primary"
+                                    :checked="selected.includes('{{ s.nom }}')"
+                                    @change="toggle('{{ s.nom }}')">
+                                <span>{{ s.nom }}</span>
+                            </label>
+                        {% endfor %}
+
+                    </div>
+
+                    <template x-for="src in selected" :key="'h-src-'+src">
+                        <input type="hidden" name="source" :value="src">
+                    </template>
+
+                </div>
+
+
+                {# ============================
+                    RANGE SELECTOR
+                ============================ #}
+                <select name="range"
+                    class="px-4 py-2 bg-gray-800 border border-gray-700 rounded-xl text-white 
+                        focus:outline-none focus:ring-2 focus:ring-primary">
+
+                    <option value="1m" {% if range_param == '1m' %}selected{% endif %}>Dernier mois</option>
+                    <option value="3m" {% if range_param == '3m' %}selected{% endif %}>3 derniers mois</option>
+                    <option value="6m" {% if range_param == '6m' %}selected{% endif %}>6 derniers mois</option>
+                    <option value="12m" {% if range_param == '12m' %}selected{% endif %}>12 derniers mois</option>
+
+                </select>
+
+            </form>
             
         </div>
     </div>

@@ -109,7 +109,7 @@ def get_flask_app():
     from routes.login_manager import login_manager
     
     app = Flask(__name__)
-    app.secret_key = os.getenv("SECRET_KEY", "dfsdfsdfdfsdfsdfsdfsdfsdfsdfsdffsd")
+    app.secret_key = os.getenv("SECRET_KEY")
     
     db_user = os.getenv("POSTGRES_USER")
     db_pass = os.getenv("POSTGRES_PASSWORD")

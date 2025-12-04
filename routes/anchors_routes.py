@@ -3,7 +3,7 @@ from flask_login import current_user, login_required
 from sqlalchemy import func
 
 from database import db
-from models import Website, Tag, Source
+from models import Source, Tag, User, Website
 
 anchors_routes = Blueprint("anchors_routes", __name__)
 
@@ -12,40 +12,67 @@ anchors_routes = Blueprint("anchors_routes", __name__)
 #  UTILITAIRES DE FILTRES
 # --------------------------------------------------------
 def get_filtered_anchors_query():
-    """Construit la requête des ancres avec les filtres (tag, source, recherche, type...)."""
-
     query = (
         db.session.query(
-            Website.anchor_text,
-            func.count(Website.anchor_text).label("count")
+            Website.anchor_text, func.count(Website.anchor_text).label("count")
         )
-        .filter(
-            Website.user_id == current_user.id,
-            Website.anchor_text.isnot(None),
-            Website.anchor_text != ""
-        )
+        .filter(Website.anchor_text.isnot(None), Website.anchor_text != "")
         .group_by(Website.anchor_text)
     )
 
-    # -------- Filtres TAG & SOURCE --------
-    tag = request.args.get("tag", "").strip().lower()
-    source = request.args.get("source", "").strip().lower()
+    # ============================
+    # 📌  FILTRE UTILISATEUR
+    # ============================
+    filter_user_ids = request.args.getlist("user_id")
 
-    if tag:
-        query = query.filter(func.lower(Website.tag) == tag)
+    if current_user.role == "main_admin":
+        # EX: ["3","8"]
+        if filter_user_ids and "__all__" not in filter_user_ids:
+            valid_ids = []
+            for uid in filter_user_ids:
+                try:
+                    valid_ids.append(int(uid))
+                except ValueError:
+                    pass
 
-    if source:
-        query = query.filter(func.lower(Website.source_plateforme) == source)
+            if valid_ids:
+                query = query.filter(Website.user_id.in_(valid_ids))
+        # sinon "__all__" → aucun filtre user
+    else:
+        # utilisateur normal : accès limité à ses propres sites
+        query = query.filter(Website.user_id == current_user.id)
 
-    # -------- Autres filtres --------
-    search = request.args.get("q", "").strip()
+    # ========== TAGS ==========
+    filter_tags = list(dict.fromkeys(request.args.getlist("tag")))
+
+    # Normalisation du sélecteur ALL
+    if not filter_tags or filter_tags == ["__all__"]:
+        filter_tags = ["__all__"]
+    else:
+        filter_tags = [t for t in filter_tags if t != "__all__"]
+
+    if filter_tags != ["__all__"]:
+        query = query.filter(func.lower(Website.tag).in_(filter_tags))
+
+    # ========== SOURCES ==========
+    filter_source = request.args.get("source", "").strip()
+
+    if filter_source and filter_source != "__all__":
+        query = query.filter(
+            func.lower(Website.source_plateforme) == filter_source.lower()
+        )
+
+    # ========== AUTRES ==========
     anchor_type = request.args.get("type", "all")
     sort = request.args.get("sort", "count")
     order = request.args.get("order", "desc")
 
-    # 🔍 Recherche textuelle
-    if search:
-        query = query.filter(Website.anchor_text.ilike(f"%{search}%"))
+    q = request.args.get("q", "").strip()
+    if q:
+        pattern = f"%{q}%"
+        query = query.filter(
+            Website.url.ilike(pattern) | Website.anchor_text.ilike(pattern)
+        )
 
     return query, anchor_type, sort, order
 
@@ -79,15 +106,17 @@ def process_anchors(rows, total_occurrences, anchor_type_filter):
         if anchor_type_filter != "all" and type_ != anchor_type_filter:
             continue
 
-        anchors.append({
-            "text": text,
-            "count": count,
-            "ratio": ratio,
-            "length": len(text),
-            "type": type_,
-            "trend": 0,
-            "over_optimized": ratio > 15,
-        })
+        anchors.append(
+            {
+                "text": text,
+                "count": count,
+                "ratio": ratio,
+                "length": len(text),
+                "type": type_,
+                "trend": 0,
+                "over_optimized": ratio > 15,
+            }
+        )
 
     return anchors
 
@@ -98,12 +127,36 @@ def process_anchors(rows, total_occurrences, anchor_type_filter):
 @anchors_routes.route("/anchors")
 @login_required
 def anchors_list():
-
     # 🔎 Obtenir la requête filtrée
     query, anchor_type_filter, sort, order = get_filtered_anchors_query()
 
     # 📌 On récupère TOUTES les ancres filtrées
     rows = query.all()
+
+    # ---------- USER ---------------
+    if current_user.role == "main_admin":
+        filter_user_ids = request.args.getlist("user_id")
+        if not filter_user_ids or "__all__" in filter_user_ids:
+            filter_user_ids = ["__all__"]
+        else:
+            filter_user_ids = [uid for uid in filter_user_ids if uid.isdigit()]
+            filter_user_ids = list(dict.fromkeys(filter_user_ids)) or ["__all__"]
+    else:
+        filter_user_ids = [str(current_user.id)]
+
+    # ---------- TAG ---------------
+    filter_tags = list(dict.fromkeys(request.args.getlist("tag")))
+    if not filter_tags or filter_tags == ["__all__"]:
+        filter_tags = ["__all__"]
+    else:
+        filter_tags = [t for t in filter_tags if t != "__all__"]
+
+    # ---------- SOURCE ---------------
+    filter_sources = list(dict.fromkeys(request.args.getlist("source")))
+    if not filter_sources or filter_sources == ["__all__"]:
+        filter_sources = ["__all__"]
+    else:
+        filter_sources = [t for t in filter_sources if t != "__all__"]
 
     if not rows:
         return render_template(
@@ -148,7 +201,7 @@ def anchors_list():
     total_pages = (len(anchors) + per_page - 1) // per_page
 
     start = (page - 1) * per_page
-    paginated = anchors[start:start + per_page]
+    paginated = anchors[start : start + per_page]
 
     # --------------------------------------------------------
     # STATS GLOBALES
@@ -156,9 +209,16 @@ def anchors_list():
     stats = {
         "total_anchors": len(anchors),
         "total_occurrences": total_occurrences,
-        "branded_percentage": round(sum(1 for a in anchors if a["type"] == "branded") / len(anchors) * 100, 1),
-        "exact_match_percentage": round(sum(1 for a in anchors if a["type"] == "exact_match") / len(anchors) * 100, 1),
-        "generic_percentage": round(sum(1 for a in anchors if a["type"] == "generic") / len(anchors) * 100, 1),
+        "branded_percentage": round(
+            sum(1 for a in anchors if a["type"] == "branded") / len(anchors) * 100, 1
+        ),
+        "exact_match_percentage": round(
+            sum(1 for a in anchors if a["type"] == "exact_match") / len(anchors) * 100,
+            1,
+        ),
+        "generic_percentage": round(
+            sum(1 for a in anchors if a["type"] == "generic") / len(anchors) * 100, 1
+        ),
         "over_optimized_count": sum(1 for a in anchors if a["over_optimized"]),
     }
 
@@ -204,21 +264,25 @@ def anchors_list():
     filters = {
         "q": request.args.get("q", ""),
         "type": anchor_type_filter,
-        "tag": request.args.get("tag", ""),
-        "source": request.args.get("source", ""),
+        "tag": filter_tags,
+        "source": filter_sources,
+        "user_id": filter_user_ids,
         "sort": sort,
         "order": order,
     }
 
     tags = Tag.query.all()
     sources = Source.query.all()
+    users = User.query.all() if current_user.role == "main_admin" else []
 
-    pagination_base_url = url_for("anchors_routes.anchors_table_partial", 
-    q=request.args.get("q", ""),
-    tag=request.args.get("tag", ""),
-    source=request.args.get("source", ""),
-    sort=request.args.get("sort", "created"),
-    order=request.args.get("order", "desc"),
+    pagination_base_url = url_for(
+        "anchors_routes.anchors_table_partial",
+        q=request.args.get("q", ""),
+        tag=filter_tags,
+        source=filter_sources,
+        user_id=filter_user_ids,
+        sort=request.args.get("sort", "created"),
+        order=request.args.get("order", "desc"),
     )
 
     return render_template(
@@ -233,6 +297,7 @@ def anchors_list():
         filters=filters,
         tags=tags,
         sources=sources,
+        users=users,
         pagination_base_url=pagination_base_url,
     )
 
@@ -243,17 +308,19 @@ def anchors_list():
 @anchors_routes.route("/anchors/partial/table")
 @login_required
 def anchors_table_partial():
-
     # Si ce n’est pas HTMX → redirection classique
     if not request.headers.get("HX-Request"):
-        return redirect(url_for("anchors_routes.anchors_list", page=request.args.get("page", 1)))
+        page = request.args.get("page", 1, type=int)
+        return redirect(url_for("anchors_routes.anchors_list", page=page))
 
     # Même logique que la page complète
     query, anchor_type_filter, sort, order = get_filtered_anchors_query()
 
     rows = query.all()
     if not rows:
-        return render_template("anchors/_anchors_table.html", anchors=[], current_page=1, total_pages=1)
+        return render_template(
+            "anchors/_anchors_table.html", anchors=[], current_page=1, total_pages=1
+        )
 
     total_occurrences = sum(r.count for r in rows)
     anchors = process_anchors(rows, total_occurrences, anchor_type_filter)
@@ -273,14 +340,41 @@ def anchors_table_partial():
     total_pages = (len(anchors) + per_page - 1) // per_page
 
     start = (page - 1) * per_page
-    paginated = anchors[start:start + per_page]
+    paginated = anchors[start : start + per_page]
 
-    base_url = url_for("anchors_routes.anchors_table_partial",
-    q=request.args.get("q", ""),
-    tag=request.args.get("tag", ""),
-    source=request.args.get("source", ""),
-    sort=request.args.get("sort", "created"),
-    order=request.args.get("order", "desc"),
+    # ---------- USER ---------------
+    if current_user.role == "main_admin":
+        filter_user_ids = request.args.getlist("user_id")
+        if not filter_user_ids or "__all__" in filter_user_ids:
+            filter_user_ids = ["__all__"]
+        else:
+            filter_user_ids = [uid for uid in filter_user_ids if uid.isdigit()]
+            filter_user_ids = list(dict.fromkeys(filter_user_ids)) or ["__all__"]
+    else:
+        filter_user_ids = [str(current_user.id)]
+
+    # ---------- TAG ---------------
+    filter_tags = list(dict.fromkeys(request.args.getlist("tag")))
+    if not filter_tags or filter_tags == ["__all__"]:
+        filter_tags = ["__all__"]
+    else:
+        filter_tags = [t for t in filter_tags if t != "__all__"]
+
+    # ---------- SOURCE ---------------
+    filter_sources = list(dict.fromkeys(request.args.getlist("source")))
+    if not filter_sources or filter_sources == ["__all__"]:
+        filter_sources = ["__all__"]
+    else:
+        filter_sources = [t for t in filter_sources if t != "__all__"]
+
+    base_url = url_for(
+        "anchors_routes.anchors_table_partial",
+        q=request.args.get("q", ""),
+        tag=filter_tags,
+        source=filter_sources,
+        user_id=filter_user_ids,
+        sort=request.args.get("sort", "created"),
+        order=request.args.get("order", "desc"),
     )
 
     return render_template(
