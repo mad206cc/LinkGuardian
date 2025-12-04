@@ -70,9 +70,6 @@ celery.conf.task_queues = (
     
     # Queue STANDARD : Vérifications auto et imports massifs (priorité normale)
     Queue('standard', routing_key='standard', priority=5),
-    
-    # Queue WEEKLY : Tâches hebdomadaires planifiées (priorité basse)
-    Queue('weekly', routing_key='weekly', priority=1),
 )
 
 celery.conf.task_default_queue = 'standard'
@@ -83,19 +80,12 @@ celery.conf.task_default_routing_key = 'standard'
 celery.conf.task_routes = {
     'tasks.check_single_site': {'queue': 'standard'},
     'tasks.check_all_user_sites': {'queue': 'standard'},
-    'tasks.check_all_sites_weekly': {'queue': 'weekly'},
 }
 
 # ============================================
 # ⏰ PLANIFICATEUR DE TÂCHES (BEAT)
 # ============================================
-celery.conf.beat_schedule = {
-    "check-all-sites-weekly": {
-        "task": "tasks.check_all_sites_weekly",
-        "schedule": crontab(day_of_week="monday", hour=2, minute=0),
-    },
-}
-
+celery.conf.beat_schedule = {}
 
 def get_flask_app():
     """

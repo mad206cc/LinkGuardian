@@ -52,13 +52,7 @@ celery.conf.update(
     },
 )
 
-# ✅ Planificateur de tâches (beat)
-celery.conf.beat_schedule = {
-    "check-all-sites-weekly": {
-        "task": "tasks.check_all_sites_weekly",
-        "schedule": crontab(day_of_week="monday", hour=2, minute=0),
-    },
-}
+celery.conf.beat_schedule = {}
 
 
 def init_celery(app):

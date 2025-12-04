@@ -71,28 +71,33 @@ dropdown_single , multiselect %}
 
     </div>
  
-    <!-- Formulaire d'ajout -->
-    <div id="add_site_form">
-        {{ add_site_form(action="/add_site", tags=tags, sources=sources) }}
+<div id="add_site_form">
+    {{ add_site_form(action="/add_site", tags=tags, sources=sources) }}
 
-        <form action="{{ url_for('sites_routes.check_all_sites') }}" method="post" class="inline">
-          <button type="submit"
-            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition"
-            onclick="return confirm('🔄 Lancer la vérification de tous les sites en arrière-plan ?');">
-            🔄 Vérifier tous les sites
-          </button>
+    <div class="flex gap-3 mt-3">  
+        <!-- Vérifier tous les sites -->
+        <form id="check-all-form" action="{{ url_for('sites_routes.check_all_sites') }}"
+              method="post" onsubmit="return askIndexation()">
+
+            <input type="hidden" name="check_indexation" id="check_indexation_value" value="false">
+
+            <button type="submit"
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow transition">
+                🔄 Vérifier tous les sites
+            </button>
         </form>
 
-        <!-- Bouton : Supprimer tous les sites -->
-        <form action="{{ url_for('sites_routes.delete_all_sites') }}" method="post" class="inline">
+        <!-- Supprimer tous les sites -->
+        <form action="{{ url_for('sites_routes.delete_all_sites') }}" method="post">
           <button type="submit"
             class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg shadow transition"
             onclick="return confirm('⚠️ Êtes-vous sûr de vouloir supprimer TOUS les sites ? Cette action est irréversible !');">
             🗑️ Supprimer tous les sites
           </button>
         </form>
-
     </div>
+</div>
+
 
     <form
         hx-trigger="change"
@@ -585,6 +590,17 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 
+</script>
+
+<script>
+function askIndexation() {
+    if (!confirm("Lancer la vérification de tous les sites ?")) return false;
+
+    let r = confirm("Souhaites-tu aussi vérifier l'indexation Google ? ('OK' si vous le souhaitez, 'Annuler' sinon)");
+    document.getElementById('check_indexation_value').value = r ? "true" : "false";
+
+    return true; // Soumet le formulaire une seule fois
+}
 </script>
 
 {% endblock %}

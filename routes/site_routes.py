@@ -350,40 +350,27 @@ def delete_all_sites():
 @login_required
 def check_all_sites():
     print("=" * 60)
-    print("🔍 [DEBUG] check_all_sites() appelée")
-    print(f"🔍 [DEBUG] User ID: {current_user.id}")
-    print(f"🔍 [DEBUG] Request method: {request.method}")
-    print(f"🔍 [DEBUG] Headers: {dict(request.headers)}")
-    print("=" * 60)
+
+    # 🧠 ici on récupère la valeur envoyé par le HTML
+    check_indexation = request.form.get("check_indexation", "false").lower() == "true"
+
+    print(f"🔍 Option indexation reçue : {check_indexation}")
 
     try:
-        print("🔍 [DEBUG] Tentative d'import de check_all_user_sites...")
+        # Lancement de la tâche Celery avec le paramètre
+        result = check_all_user_sites.delay(current_user.id, check_indexation)
 
-        print("✅ [DEBUG] Import réussi")
-
-        print("🔍 [DEBUG] Tentative de lancement de la tâche...")
-        result = check_all_user_sites.delay(current_user.id)
-        print(f"✅ [DEBUG] Tâche lancée avec ID: {result.id}")
-
-        # 🟢 ENREGISTRER LE TASK ID POUR LA PURGE PERSONNALISÉE
         record = TaskRecord(task_id=result.id, user_id=current_user.id)
         db.session.add(record)
         db.session.commit()
-        print(f"🟢 [DEBUG] TaskRecord sauvegardé : {result.id}")
 
-        flash("🚀 Vérification globale lancée en arrière-plan !", "success")
+        flash(f"🚀 Vérification lancée {'avec' if check_indexation else 'sans'} indexation Google !", "success")
 
     except Exception as e:
-        print(f"❌ [DEBUG] Erreur générale: {type(e).__name__}: {e}")
-        import traceback
-
-        traceback.print_exc()
         flash(f"❌ Erreur : {e}", "danger")
 
-    print("🔍 [DEBUG] Fin de la fonction, redirection...")
-    print("=" * 60)
-
     return redirect(url_for("backlinks_routes.backlinks_list"))
+
 
 
 @sites_routes.route("/import", methods=["GET", "POST"])
@@ -422,7 +409,7 @@ def import_data():
             df["link_to_check"] = df["link_to_check"].astype(str).str.strip()
             df["anchor_text"] = df["anchor_text"].astype(str).str.strip()
 
-            # 🔥 Précharger Tags & Sources existants (ultra rapide)
+            # 🔥 Précharger Tags & Sources existants
             existing_tags = {t.valeur.lower(): t for t in Tag.query.all()}
             existing_sources = {s.nom.lower(): s for s in Source.query.all()}
 
@@ -432,9 +419,41 @@ def import_data():
                 (s.url, s.link_to_check, s.anchor_text): s for s in existing_sites
             }
 
+            # ================================
+            # 1) Préparer les URLs "nouvelles"
+            #    (pour cet utilisateur)
+            # ================================
+            new_urls_for_user = set()
+            for _, row in df.iterrows():
+                url = row["url"]
+                if not url:
+                    continue
+                key = (url, row["link_to_check"], row["anchor_text"])
+                if key not in lookup:
+                    new_urls_for_user.add(url)
+
+            # ================================
+            # 2) Récupérer les indexations déjà
+            #    connues pour ces URLs (tous users)
+            # ================================
+            url_to_index_status = {}
+            if new_urls_for_user:
+                indexed_sites = (
+                    Website.query
+                    .filter(
+                        Website.url.in_(list(new_urls_for_user)),
+                        Website.google_index_status.isnot(None),
+                    )
+                    .all()
+                )
+                for s in indexed_sites:
+                    # On garde le premier status trouvé par URL
+                    if s.url not in url_to_index_status:
+                        url_to_index_status[s.url] = s.google_index_status
+
             new_sites = []
             updated_sites = []
-            websites_to_check = []
+            websites_to_check = []  # contiendra (site, check_indexation_bool)
 
             # 🔥 Boucle principale
             for _, row in df.iterrows():
@@ -453,10 +472,10 @@ def import_data():
                 # -------------------------
                 if tag_value:
                     tag_key = remove_accents(tag_value.strip().lower())
-
                     if tag_key not in existing_tags:
                         new_tag = Tag(
-                            valeur=tag_key, couleur=couleur_aleatoire_unique()
+                            valeur=tag_key,
+                            couleur=couleur_aleatoire_unique()
                         )
                         db.session.add(new_tag)
                         existing_tags[tag_key] = new_tag
@@ -466,7 +485,6 @@ def import_data():
                 # ----------------------------------
                 if source_value:
                     source_key = remove_accents(source_value.strip().lower())
-
                     if source_key not in existing_sources:
                         new_source = Source(nom=source_key)
                         db.session.add(new_source)
@@ -474,6 +492,8 @@ def import_data():
 
                 # -------------------------
                 # 🔄 UPDATE d’un site existant
+                # (couple déjà présent pour l'utilisateur)
+                # 👉 On NE TOUCHE PAS à google_index_status
                 # -------------------------
                 if key in lookup:
                     site = lookup[key]
@@ -485,8 +505,12 @@ def import_data():
 
                     updated_sites.append(site)
 
+                    # ❌ Pas d’indexation : on garde la valeur existante
+                    check_indexation = False
+
                 # -------------------------
                 # 🆕 INSERT d’un nouveau site
+                # (nouveau couple pour cet utilisateur)
                 # -------------------------
                 else:
                     site = Website(
@@ -499,9 +523,20 @@ def import_data():
                         user_id=current_user.id,
                         first_checked=datetime.now(),
                     )
+
+                    # 🧠 Essayer de réutiliser une indexation existante
+                    reused_status = url_to_index_status.get(url)
+                    if reused_status is not None:
+                        # 👉 On reprend l’indexation Google existante
+                        site.google_index_status = reused_status
+                        check_indexation = False   # pas besoin d'appeler SerpAPI
+                    else:
+                        # 👉 URL jamais vue / jamais indexée : on demandera SerpAPI
+                        check_indexation = True
+
                     new_sites.append(site)
 
-                websites_to_check.append(site)
+                websites_to_check.append((site, check_indexation))
 
             # 🔥 Commit global (sites + nouveaux tags/sources)
             db.session.add_all(new_sites)
@@ -513,9 +548,11 @@ def import_data():
             from tasks import check_single_site
 
             task_records = []
-            for site in websites_to_check:
+            for site, check_indexation in websites_to_check:
                 task = check_single_site.apply_async(
-                    args=[site.id], queue="standard", priority=3
+                    args=[site.id, check_indexation],
+                    queue="standard",
+                    priority=3,
                 )
                 task_records.append(
                     TaskRecord(task_id=task.id, user_id=current_user.id)
@@ -525,7 +562,8 @@ def import_data():
             db.session.commit()
 
             flash(
-                "Import lancé 🚀 Les vérifications se font en arrière-plan.", "success"
+                "Import lancé 🚀 Les vérifications se font en arrière-plan.",
+                "success",
             )
 
         except Exception as e:
@@ -554,6 +592,7 @@ def import_data():
     )
 
 
+
 def calculate_stats(user_id):
     websites = Website.query.filter_by(user_id=user_id).all()
     total = len(websites)
@@ -568,107 +607,6 @@ def calculate_stats(user_id):
     }
     return stats
 
-
-if False:
-
-    @sites_routes.route("/import", methods=["GET", "POST"])
-    def import_data():
-        if request.method == "POST":
-            file = request.files.get("file")
-            if not file:
-                flash("Aucun fichier sélectionné", "error")
-                return redirect(request.referrer)
-
-            try:
-                df = pd.read_excel(file)
-                df.columns = [col.lower().strip() for col in df.columns]
-
-                websites_to_check = []
-
-                for _, row in df.iterrows():
-                    url = str(row.get("url", "")).strip()
-                    if not url:
-                        continue
-
-                    tag = str(row.get("tag", "")).lower().strip()
-                    domain = extract_domain(url)
-                    source_plateforme = str(row.get("plateforme", "")).strip()
-                    link_to_check = str(row.get("link_to_check", "")).strip()
-                    anchor_text = str(row.get("anchor_text", "")).strip()
-
-                    site = Website.query.filter_by(
-                        url=url, link_to_check=link_to_check, user_id=current_user.id
-                    ).first()
-
-                    if site:
-                        site.tag = tag or site.tag
-                        site.domains = domain or site.domains
-                        site.source_plateforme = (
-                            source_plateforme or site.source_plateforme
-                        )
-                        site.anchor_text = anchor_text or site.anchor_text
-                    else:
-                        site = Website(
-                            url=url,
-                            domains=domain,
-                            tag=tag,
-                            link_to_check=link_to_check,
-                            anchor_text=anchor_text,
-                            source_plateforme=source_plateforme,
-                            user_id=current_user.id,
-                            first_checked=datetime.now(),
-                        )
-                        db.session.add(site)
-
-                    websites_to_check.append(site)
-
-                db.session.commit()
-
-                # Lancer Celery
-                from tasks import check_single_site
-
-                task_records = []  # Buffer
-
-                for site in websites_to_check:
-                    task = check_single_site.apply_async(
-                        args=[site.id], queue="standard", priority=3
-                    )
-
-                    task_records.append(
-                        TaskRecord(task_id=task.id, user_id=current_user.id)
-                    )
-
-                # Ajout des enregistrements en une seule fois
-                db.session.add_all(task_records)
-                db.session.commit()
-
-                flash(
-                    "Import lancé 🚀 Les vérifications se font en arrière-plan.",
-                    "success",
-                )
-
-            except Exception as e:
-                db.session.rollback()
-                print("Erreur import:", e)
-                flash("Erreur lors de l'import.", "error")
-
-            return redirect(url_for("backlinks_routes.backlinks_list"))
-
-        # GET → liste normale
-        websites = Website.query.filter_by(user_id=current_user.id).all()
-        stats = calculate_stats(current_user.id)
-        sources = Source.query.all()
-
-        return render_template(
-            "backlinks/list.html",
-            backlinks=websites,
-            stats=stats,
-            current_page=1,
-            total_pages=1,
-            sort="created",
-            order="desc",
-            sources=sources,
-        )
 
 
 # bouton pour exporter les données en CSV

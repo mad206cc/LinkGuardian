@@ -28,7 +28,7 @@ class APIRateLimitError(Exception):
         )
 
 
-async def process_site_async(site_id):
+async def process_site_async(site_id, check_indexation = False):
 
     from services.api_serpapi import check_google_indexation
     from services.check_service import check_link_presence_and_follow_status_async
@@ -51,11 +51,12 @@ async def process_site_async(site_id):
             print("❌ HTML ERROR :", repr(e))
 
         # 2) Google indexing
-        try:
-            index_status = await check_google_indexation(session, site.url)
-            site.google_index_status = index_status
-        except Exception as e:
-            print("❌ GOOGLE ERROR :", repr(e))
+        if check_indexation:
+            try:
+                index_status = await check_google_indexation(session, site.url)
+                site.google_index_status = index_status
+            except Exception as e:
+                print("❌ GOOGLE ERROR :", repr(e))
 
         # 3) Babbar
         try:
@@ -101,7 +102,7 @@ async def process_site_async(site_id):
     retry_backoff_max=600,
     retry_jitter=True,
 )
-def check_single_site(self, site_id):
+def check_single_site(self, site_id, check_indexation = False):
     print(f"🔍 Vérification site ID: {site_id}")
 
     site = Website.query.get(site_id)
@@ -110,7 +111,7 @@ def check_single_site(self, site_id):
         return {"success": True, "skipped": True}
 
     try:
-        result = asyncio.run(process_site_async(site_id))
+        result = asyncio.run(process_site_async(site_id, check_indexation=check_indexation))
         print(f"✅ Vérification OK pour {site_id}")
         return result
 
@@ -134,7 +135,7 @@ def check_single_site(self, site_id):
     name="tasks.check_all_user_sites",
     rate_limit="10/m",  # ⬆️ Augmenté de 2/m à 10/m
 )
-def check_all_user_sites(user_id):
+def check_all_user_sites(user_id, check_indexation = False):
     """Vérifie tous les sites d'un utilisateur
 
     🚀 OPTIMISATION: Les tâches sont lancées sans countdown.
@@ -173,7 +174,7 @@ def check_all_user_sites(user_id):
         # ✅ Lancer la tâche SANS countdown
         # Le système de queues et les multiples workers géreront la distribution
         task = check_single_site.apply_async(
-            args=[site.id],
+            args=[site.id, check_indexation],
             queue="standard",
             priority=5,
         )
@@ -205,47 +206,6 @@ def check_all_user_sites(user_id):
         "task_ids": task_ids,
         "mode": "standard",
     }
-
-
-@celery.task(name="tasks.check_all_sites_weekly")
-def check_all_sites_weekly():
-    """Vérification hebdomadaire automatique
-
-    🎯 OPTIMISATION: Espacement entre utilisateurs réduit de 30min à 5min
-    Les workers multiples peuvent gérer plusieurs utilisateurs simultanément
-    """
-    print("⏰ Début vérification hebdomadaire")
-
-    users = User.query.all()
-    total_users = len(users)
-
-    print(f"👥 {total_users} utilisateurs trouvés")
-
-    # 🚀 Espacement réduit : 5 minutes entre chaque utilisateur
-    # Avec 3+ workers, plusieurs utilisateurs seront traités en parallèle
-    for i, user in enumerate(users):
-        countdown = i * 300  # 300s = 5 minutes (au lieu de 30)
-
-        print(
-            f"📅 Vérification user {user.id} planifiée dans {countdown / 60:.0f} minutes"
-        )
-
-        check_all_user_sites.apply_async(
-            args=[user.id],
-            countdown=countdown,
-            queue="weekly",  # Queue dédiée basse priorité
-        )
-
-    total_duration_hours = (total_users * 5) / 60
-    print(f"✅ Vérifications lancées pour {total_users} utilisateurs")
-    print(f"⏱️ Durée estimée totale: {total_duration_hours:.1f} heures")
-
-    return {
-        "total_users": total_users,
-        "message": "Vérification hebdomadaire lancée",
-        "estimated_duration_hours": total_duration_hours,
-    }
-
 
 @celery.task(name="tasks.check_task_status")
 def check_task_status(task_id):

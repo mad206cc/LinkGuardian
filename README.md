@@ -77,9 +77,9 @@ Il est important de s'en souvenir que la projet est séparé en plusieurs, qui s
 Celery est utilisé pour exécuter en arrière-plan toutes les tâches lourdes ou longues
 (vérifications des backlinks, import de sites, tâches automatisées, etc.).  
 Il permet à l'application de rester fluide pendant que les analyses se déroulent en parallèle.  
-Dans LinkGuardian, plusieurs workers Celery traitent les files `urgent`, `standard`, `weekly`.
+Dans LinkGuardian, plusieurs workers Celery traitent les files `urgent` et `standard`.
 
-### 🐰 RabbitMQ
+### 🐇 RabbitMQ
 RabbitMQ est le message broker utilisé par Celery.  Il sert de file d'attente pour stocker et distribuer les tâches aux workers.  
 Le backend ajoute une tâche → RabbitMQ la met en file → Celery worker l'exécute.
 Dans LinkGuardian, on l'utilise principalement pour gérer le lancement des requêtes d'API (Serpapi et Babbar).

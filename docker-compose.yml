@@ -69,14 +69,14 @@ services:
       RABBITMQ_DEFAULT_PASS: admin123
 
   # ============================================
-  # 🌊 WORKER 3 : STANDARD + WEEKLY
+  # 🌊 WORKER 3 : STANDARD 
   # Gère la charge mixte et les tâches planifiées
   # ============================================
   worker_3:
     build: .
     container_name: linkguardian_worker_3
     restart: always
-    command: celery -A celery_app.celery worker -Q standard,weekly --concurrency=8 --loglevel=INFO --hostname=worker3@%h
+    command: celery -A celery_app.celery worker -Q standard --concurrency=8 --loglevel=INFO --hostname=worker3@%h
     depends_on:
       - postgres
       - rabbitmq
@@ -176,7 +176,7 @@ volumes:
 # ============================================
 # Worker 1: 6 tâches simultanées (urgent + standard)
 # Worker 2: 8 tâches simultanées (standard)
-# Worker 3: 8 tâches simultanées (standard + weekly)
+# Worker 3: 8 tâches simultanées (standard)
 # 
 # TOTAL: 22 tâches simultanées
 # Avec prefetch_multiplier=4 : 88 tâches en préchargement
