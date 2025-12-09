@@ -69,7 +69,7 @@ def configuration():
     config = Configuration.query.first()
     users = User.query.all()
     total_users = len(users)
-    total_admins = len([u for u in users if u.role == "admin"])
+    total_admins = len([u for u in users if u.role in ["admin", "main_admin"]])
 
     # ==============================
     # 👥 Données de partage
